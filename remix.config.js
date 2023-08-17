@@ -2,6 +2,7 @@
 export default {
   devServerBroadcastDelay: 1000,
   ignoredRouteFiles: ["**/.*"],
+  postcss: true,
   tailwind: true,
   server: "./server.ts",
   serverBuildPath: "functions/[[path]].js",
