@@ -180,6 +180,7 @@ export default () => {
 
             localPeerConnection.onicecandidate = (event) => {
               if (event.candidate) {
+                console.log("onClick={ ~ event.candidate:", event.candidate);
                 remotePeerConnection.addIceCandidate(event.candidate);
               } else {
                 console.log("all local candidates have been added =>");
