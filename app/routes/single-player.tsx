@@ -41,7 +41,7 @@ export default () => {
   const [offer, setOffer] = useState("");
   const [answer, setAnswer] = useState("");
   const [step, setStep] = useState<Step>("media");
-  const [sources, setSources] = useState<MediaDeviceInfo[]>([]);
+  // const [sources, setSources] = useState<MediaDeviceInfo[]>([]);
   const [local, setLocal] = useState<Connection>({
     mediaStream: undefined,
     peerConnection: undefined,
@@ -56,12 +56,12 @@ export default () => {
     if (typeof window === "undefined") return;
 
     // get possible local user media inputs options
-    function getSources() {
-      console.log("getting sources =>");
-      return navigator.mediaDevices.enumerateDevices();
-    }
+    // function getSources() {
+    //   console.log("getting sources =>");
+    //   return navigator.mediaDevices.enumerateDevices();
+    // }
 
-    getSources().then(setSources);
+    // getSources().then(setSources);
 
     // setup browser-dependant initial state
     setLocal((prevLocal) => ({
@@ -77,7 +77,7 @@ export default () => {
 
   return (
     <main className="max-w-3xl mx-auto space-y-5">
-      <section>
+      {/* <section>
         <p>
           <label htmlFor="audioSrc">Audio source:</label>
           <select id="audioSrc">
@@ -104,44 +104,33 @@ export default () => {
               ))}
           </select>
         </p>
-      </section>
+      </section> */}
       <section className="grid grid-flow-col-dense gap-1">
         <Button
           disabled={step !== "media"}
           // 2. get local media and set the local video up
           onClick={async () => {
-            function getLocalMediaStream() {
-              try {
-                return navigator.mediaDevices.getUserMedia({
-                  video: {
-                    width: { min: 640, ideal: 1920, max: 1920 },
-                    height: { min: 480, ideal: 1080, max: 1080 },
-                  },
-                  audio: false,
-                });
-              } catch (error) {
-                if (error instanceof Error) {
-                  console.log(
-                    `getMedia => couldn't get user media =>'`,
-                    error.message,
-                  );
-                }
-
-                throw error;
-              }
+            function getMediaStream() {
+              return navigator.mediaDevices.getUserMedia({
+                video: {
+                  width: { min: 640, ideal: 1920, max: 1920 },
+                  height: { min: 480, ideal: 1080, max: 1080 },
+                },
+                audio: false,
+              });
             }
 
-            const localMediaStream = await getLocalMediaStream();
+            const mediaStream = await getMediaStream();
 
             setLocal((prevLocal) => ({
               ...prevLocal,
-              mediaStream: localMediaStream,
+              mediaStream,
             }));
 
             const localVideo = document.querySelector("#local-video");
 
             if (localVideo) {
-              (localVideo as HTMLVideoElement).srcObject = localMediaStream;
+              (localVideo as HTMLVideoElement).srcObject = mediaStream;
             }
 
             setStep("peerConnection");
@@ -191,20 +180,17 @@ export default () => {
 
             localPeerConnection.onicecandidate = (event) => {
               if (event.candidate) {
+                console.log("onClick={ ~ event.candidate:", event.candidate);
                 remotePeerConnection.addIceCandidate(event.candidate);
               } else {
-                console.log(
-                  "all candidates have been added to the REMOTE peer connection",
-                );
+                console.log("all local candidates have been added =>");
               }
             };
             remotePeerConnection.onicecandidate = (event) => {
               if (event.candidate) {
                 localPeerConnection.addIceCandidate(event.candidate);
               } else {
-                console.log(
-                  "all candidates have been added to the LOCAL peer connection",
-                );
+                console.log("all remote candidates have been added =>");
               }
             };
             remotePeerConnection.ontrack = (event) => {
