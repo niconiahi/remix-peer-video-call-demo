@@ -1,6 +1,5 @@
 /** @type {import('@remix-run/dev').AppConfig} */
 export default {
-  devServerBroadcastDelay: 1000,
   ignoredRouteFiles: ["**/.*"],
   postcss: true,
   tailwind: true,
@@ -12,9 +11,9 @@ export default {
   serverMinify: true,
   serverModuleFormat: "esm",
   serverPlatform: "neutral",
-  // appDirectory: "app",
-  // assetsBuildDirectory: "public/build",
-  // publicPath: "/build/",
+  serverNodeBuiltinsPolyfill: {
+    modules: {},
+  },
   future: {
     v2_dev: true,
     v2_errorBoundary: true,

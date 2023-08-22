@@ -1,16 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
-  json,
-  type ActionArgs,
   type HeadersFunction,
-  type LoaderArgs,
   type V2_MetaFunction,
-  redirect,
 } from "@remix-run/cloudflare";
-import { Form, useFetcher, useLoaderData } from "@remix-run/react";
+import { Form } from "@remix-run/react";
 import clsx from "clsx";
-import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import invariant from "tiny-invariant";
 import { z } from "zod";
 
@@ -52,25 +47,23 @@ type Event =
       candidate: string;
     };
 
-const EventSchema = z.array(
-  z.discriminatedUnion("type", [
-    z.object({
-      type: z.literal("offer"),
-      sender: z.string(),
-      sessionDescription: z.string(),
-    }),
-    z.object({
-      type: z.literal("answer"),
-      sender: z.string(),
-      sessionDescription: z.string(),
-    }),
-    z.object({
-      type: z.literal("candidate"),
-      sender: z.string(),
-      candidate: z.string(),
-    }),
-  ]),
-);
+const EventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("offer"),
+    sender: z.string(),
+    sessionDescription: z.string(),
+  }),
+  z.object({
+    type: z.literal("answer"),
+    sender: z.string(),
+    sessionDescription: z.string(),
+  }),
+  z.object({
+    type: z.literal("candidate"),
+    sender: z.string(),
+    candidate: z.string(),
+  }),
+]);
 
 const OfferEventSchema = z.object({
   type: z.literal("offer"),
@@ -93,156 +86,32 @@ const CandidateEventSchema = z.object({
 });
 type CandidateEvent = z.infer<typeof CandidateEventSchema>;
 
-export async function action({ request }: ActionArgs) {
-  const formData = await request.formData();
-
-  switch (formData.get("_action")) {
-    case "offer": {
-      const eventEntry = formData.get("event");
-
-      if (!eventEntry) {
-        throw new Error(
-          '"event" param is required when executing the "offer" action',
-        );
-      }
-
-      const event = OfferEventSchema.safeParse(
-        JSON.parse(eventEntry.toString()),
-      );
-
-      if (!event.success) {
-        throw new Error(event.error.message);
-      }
-
-      const url = new URL(request.url);
-      url.searchParams.append("event", eventEntry.toString());
-
-      return redirect(url.toString());
-    }
-    case "answer": {
-      const eventEntry = formData.get("event");
-
-      if (!eventEntry) {
-        throw new Error(
-          '"event" param is required when executing the "answer" action',
-        );
-      }
-
-      const event = AnswerEventSchema.safeParse(
-        JSON.parse(eventEntry.toString()),
-      );
-
-      if (!event.success) {
-        throw new Error(event.error.message);
-      }
-
-      const url = new URL(request.url);
-      url.searchParams.append("event", eventEntry.toString());
-
-      return redirect(url.toString());
-    }
-    case "candidate": {
-      const eventEntry = formData.get("event");
-
-      if (!eventEntry) {
-        throw new Error(
-          '"event" param is required when executing the "offer" action',
-        );
-      }
-
-      const event = CandidateEventSchema.safeParse(
-        JSON.parse(eventEntry.toString()),
-      );
-
-      if (!event.success) {
-        throw new Error(event.error.message);
-      }
-
-      const url = new URL(request.url);
-      url.searchParams.append("event", eventEntry.toString());
-
-      return redirect(url.toString());
-    }
-    case "event": {
-      const eventEntry = formData.get("event");
-
-      if (!eventEntry) {
-        throw new Error(
-          '"event" param is required when executing the "event" action',
-        );
-      }
-      const event = EventSchema.safeParse(JSON.parse(eventEntry.toString()));
-
-      if (!event.success) {
-        throw new Error(event.error.message);
-      }
-
-      const url = new URL(request.url);
-      url.searchParams.append("event", eventEntry.toString());
-
-      return redirect(url.toString());
-    }
-    default: {
-      throw new Error("Unknown action");
-    }
-  }
-}
-
-export async function loader({ request }: LoaderArgs) {
-  const url = new URL(request.url);
-  const events = EventSchema.safeParse(
-    url.searchParams
-      .getAll("event")
-      .map((entry) => JSON.parse(entry.toString())),
-  );
-
-  if (!events.success) {
-    throw new Error(events.error.message);
-  }
-
-  const answerEvent = events.data.find((event) => {
-    return event.type === "answer";
-  });
-  const answer = AnswerEventSchema.safeParse(answerEvent);
-
-  const offerEvent = events.data.find((event) => {
-    return event.type === "offer";
-  });
-  const offer = OfferEventSchema.safeParse(offerEvent);
-
-  const candidateEvents = events.data.filter(
-    (event) => event.type === "candidate",
-  );
-  const candidates = z.array(CandidateEventSchema).safeParse(candidateEvents);
-
-  return json({
-    events: events.data,
-    offer: offer.success ? offer.data : undefined,
-    answer: answer.success ? answer.data : undefined,
-    caller: url.searchParams.get("caller") ?? "",
-    candidates: candidates.success
-      ? candidates.data.map((candidate) => candidate)
-      : [],
-  });
-}
-
 export default () => {
-  const [remoteEvents, setRemoteEvents] = useState<Event[]>([]);
-  const [username, setUsername] = useState("");
-  const usernameRef = useRef<HTMLInputElement>(null);
   const eventRef = useRef<HTMLTextAreaElement>(null);
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const [username, setUsername] = useState("");
+  const [events, setEvents] = useState<Event[]>([]);
   const [peerConnection, setPeerConnection] = useState<
     RTCPeerConnection | undefined
   >(undefined);
-  const [mediaStream, setMediaStream] = useState<MediaStream | undefined>(
-    undefined,
+  const _candidateEvents = z.array(CandidateEventSchema).safeParse(
+    events.filter((event) => {
+      return event.type === "candidate";
+    }),
   );
-  const { candidates, offer, events } = useLoaderData<typeof loader>();
-
-  useSetup({ setMediaStream, setPeerConnection, username });
-
-  // useAddAnswer
-  // useEffect(() => {}, [remoteEvents, peerConnection]);
+  const candidateEvents = _candidateEvents.success ? _candidateEvents.data : [];
+  const _answerEvent = AnswerEventSchema.safeParse(
+    events.find((event) => {
+      return event.type === "answer";
+    }),
+  );
+  const answerEvent = _answerEvent.success ? _answerEvent.data : undefined;
+  const _offerEvent = OfferEventSchema.safeParse(
+    events.find((event) => {
+      return event.type === "offer";
+    }),
+  );
+  const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
 
   if (username.length === 0) {
     return (
@@ -253,15 +122,16 @@ export default () => {
               Username
             </label>
             <input
+              required
               type="text"
               id="caller"
               ref={usernameRef}
               className="border-2 border-red-900"
             />
           </p>
-          <Button
-            className="w-full bg-red-200 border-2 border-red-900 text-red-900 hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300 disabled:border-red-300"
-            onClick={() => {
+          <button
+            className="p-4 w-full bg-red-200 border-2 border-red-900 text-red-900 hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300 disabled:border-red-300"
+            onClick={async () => {
               const input = usernameRef.current;
 
               if (!input) return;
@@ -270,7 +140,7 @@ export default () => {
             }}
           >
             Use this username
-          </Button>
+          </button>
         </Form>
       </main>
     );
@@ -278,13 +148,13 @@ export default () => {
 
   return (
     <main className="max-w-3xl mx-auto space-y-2 py-2">
-      <section className="grid grid-cols-5 gap-2">
-        <video
-          className="col-span-3 border-2 border-gray-900"
-          id="local-video"
-          autoPlay
-          playsInline
-        />
+      <section className="grid grid-cols-6 gap-2">
+        <div className="col-span-4 border-2 border-gray-900 relative">
+          <video className="w-full" id="local-video" autoPlay playsInline />
+          <span className="absolute bottom-2 right-2 text-gray-100 bg-gray-900 rounded-md p-1">
+            {username}
+          </span>
+        </div>
         <video
           className="col-span-2 border-2 border-gray-900"
           id="remote-video"
@@ -293,25 +163,224 @@ export default () => {
         />
       </section>
       <section className="grid grid-cols-10 gap-2">
-        <OfferButton
-          offer={offer}
-          peerConnection={peerConnection}
-          username={username}
-        />
-        <AnswerButton
-          candidates={candidates}
-          offer={offer}
-          username={username}
-          peerConnection={peerConnection}
-        />
-        <AddAnswerButton
-          peerConnection={peerConnection}
-          username={username}
-          offer={offer}
-          remoteEvents={remoteEvents}
-        />
+        <button
+          disabled={offerEvent !== undefined}
+          className="p-4 bg-blue-100 w-full border-2 text-blue-900 border-blue-900 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-blue-100 disabled:text-blue-300 disabled:border-blue-300 col-span-4"
+          type="submit"
+          onClick={async () => {
+            // 1. creates peer connection
+            const peerConnection = new RTCPeerConnection(iceServers);
+
+            // 2. sets up media and its video
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { min: 640, ideal: 1920, max: 1920 },
+                height: { min: 480, ideal: 1080, max: 1080 },
+              },
+              audio: false,
+            });
+
+            const localVideo = document.querySelector("#local-video");
+
+            if (localVideo) {
+              (localVideo as HTMLVideoElement).srcObject = mediaStream;
+            }
+
+            // 3. adds its media tracks to the peer connection
+            mediaStream
+              .getTracks()
+              .forEach((track) => peerConnection.addTrack(track, mediaStream));
+
+            // 4. saves the candidates
+            peerConnection.onicecandidate = (event) => {
+              if (event.candidate) {
+                console.log("new candidate => ", event.candidate);
+                setEvents((prevEvents) => [
+                  ...prevEvents,
+                  {
+                    candidate: JSON.stringify(event.candidate),
+                    sender: username,
+                    type: "candidate",
+                  } as CandidateEvent,
+                ]);
+              } else {
+                console.log("all local candidates have been added =>");
+              }
+            };
+
+            // 5. expects receiving tracks from the peer
+            peerConnection.ontrack = (event) => {
+              const remoteVideo = document.querySelector("#remote-video");
+              if (!remoteVideo) return;
+              const video = remoteVideo as HTMLVideoElement;
+              const mediaStream = event.streams[0];
+              if (video.srcObject !== mediaStream) {
+                video.srcObject = mediaStream;
+              }
+            };
+
+            // 6. creates offer `.createOffer()`
+            const offer = await peerConnection.createOffer({
+              offerToReceiveAudio: true,
+              offerToReceiveVideo: true,
+            });
+
+            // 7. sets setLocalDescription
+            peerConnection.setLocalDescription(offer);
+
+            // 8. sends the offer as the "offer" event
+            setPeerConnection(peerConnection);
+            setEvents((prevEvents) => [
+              ...prevEvents,
+              {
+                type: "offer",
+                sender: username,
+                sessionDescription: JSON.stringify(offer),
+              } as OfferEvent,
+            ]);
+          }}
+        >
+          Create offer
+        </button>
+        <button
+          className="p-4 w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-4"
+          disabled={offerEvent === undefined || username === offerEvent?.sender}
+          onClick={async () => {
+            invariant(offerEvent, '"offer" is required to create an answer');
+
+            // 1. creates peer connection
+            const peerConnection = new RTCPeerConnection(iceServers);
+
+            // 2. sets up media and its video
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { min: 640, ideal: 1920, max: 1920 },
+                height: { min: 480, ideal: 1080, max: 1080 },
+              },
+              audio: false,
+            });
+
+            const localVideo = document.querySelector("#local-video");
+
+            if (localVideo) {
+              (localVideo as HTMLVideoElement).srcObject = mediaStream;
+            }
+
+            // 3. adds its media tracks to the peer connection
+            mediaStream
+              .getTracks()
+              .forEach((track) => peerConnection.addTrack(track, mediaStream));
+
+            // 4. saves the candidates
+            peerConnection.onicecandidate = (event) => {
+              if (event.candidate) {
+                console.log("new candidate => ", event.candidate);
+                setEvents((prevEvents) => [
+                  ...prevEvents,
+                  {
+                    candidate: JSON.stringify(event.candidate),
+                    sender: username,
+                    type: "candidate",
+                  } as CandidateEvent,
+                ]);
+              } else {
+                console.log("all local candidates have been added =>");
+              }
+            };
+
+            // 5. expects receiving tracks from the peer
+            peerConnection.ontrack = (event) => {
+              const remoteVideo = document.querySelector("#remote-video");
+              if (!remoteVideo) return;
+              const video = remoteVideo as HTMLVideoElement;
+              const mediaStream = event.streams[0];
+              if (video.srcObject !== mediaStream) {
+                video.srcObject = mediaStream;
+              }
+            };
+
+            // 6. gets the offer value from the received event
+            const { sessionDescription } = offerEvent;
+
+            // 7. sets remote description using the offer
+            peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
+
+            // 8. creates the answer using the offer
+            const answer = await peerConnection.createAnswer();
+
+            // 9. sets local description using the answer
+            peerConnection.setLocalDescription(answer);
+
+            // 10. add peer candidates
+            candidateEvents
+              .filter(({ sender }) => sender !== username)
+              .forEach(({ candidate, sender }) => {
+                console.log(
+                  `${username} added an ice candidate from ${sender} =>`,
+                );
+                peerConnection.addIceCandidate(JSON.parse(candidate));
+              });
+
+            // 11. sends the answer as the "answer" event
+            setPeerConnection(peerConnection);
+            setEvents((prevEvents) => [
+              ...prevEvents,
+              {
+                type: "answer",
+                sender: username,
+                sessionDescription: JSON.stringify(answer),
+              } as AnswerEvent,
+            ]);
+          }}
+        >
+          Create answer
+        </button>
+        <button
+          className="p-4 w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-2"
+          // disabled={offer === undefined || username === offer?.sender}
+          disabled={
+            offerEvent === undefined ||
+            answerEvent === undefined ||
+            answerEvent.sender === username ||
+            peerConnection === undefined ||
+            candidateEvents.length < 2
+          }
+          onClick={async () => {
+            invariant(offerEvent, '"offerEvent" is required to add the answer');
+            invariant(
+              answerEvent,
+              '"offerEvent" is required to add the answer',
+            );
+            invariant(
+              peerConnection,
+              '"peerConnection" is required to add the answer',
+            );
+
+            // 1. sets local description using the offer
+            await peerConnection.setLocalDescription(
+              JSON.parse(offerEvent.sessionDescription),
+            );
+
+            // 2. sets remote description using the answer
+            await peerConnection.setRemoteDescription(
+              JSON.parse(answerEvent.sessionDescription),
+            );
+
+            // 3. add peer candidates
+            candidateEvents
+              .filter(({ sender }) => sender !== username)
+              .forEach(({ candidate, sender }) => {
+                peerConnection.addIceCandidate(JSON.parse(candidate));
+                console.log(
+                  `${username} added an ice candidate from ${sender} =>`,
+                );
+              });
+          }}
+        >
+          Add answer
+        </button>
       </section>
-      <section className="grid grid-cols-2 gap-1">
+      <section className="grid grid-cols-2 gap-2">
         <p className="flex flex-col">
           <label
             className="text-blue-900 border-2 border-blue-900 w-fit border-b-0 p-1"
@@ -324,7 +393,7 @@ export default () => {
             className="h-[300px] p-1 border-2 border-blue-900 bg-blue-200"
             readOnly
             disabled
-            defaultValue={offer?.sessionDescription ?? ""}
+            defaultValue={offerEvent?.sessionDescription ?? ""}
           />
         </p>
         <p className="flex flex-col">
@@ -339,58 +408,130 @@ export default () => {
             className="h-[300px] p-1 border-2 border-green-900 bg-green-200"
             disabled
             readOnly
-            // defaultValue={answer?.sessionDescription ?? ""}
+            defaultValue={answerEvent?.sessionDescription ?? ""}
           />
         </p>
       </section>
-      <section className="grid grid-cols-1 space-y-2">
-        {/* <Form className="grid grid-cols-8 gap-1 bg-teal-200 border-2 p-1 border-teal-900 text-teal-900"> */}
-        <p className="flex col-span-6 items-center space-x-1">
-          <label className="text-teal-900 " htmlFor="event">
+      <section className="grid grid-cols-3 space-y-2 gap-x-2 items-end">
+        <p className="flex flex-col col-span-2">
+          <label
+            className="text-teal-900 border-2 border-teal-900 w-fit border-b-0 p-1"
+            htmlFor="event"
+          >
             Event
           </label>
           <textarea
             id="event"
-            // name="event"
             placeholder="Paste copied event here"
-            className="h-[44px] flex-1 p-1 border-2 border-teal-900 bg-teal-200 placeholder:text-teal-900"
+            className="max-h-[44px] h-[44px] flex-1 p-1 border-2 border-teal-900 bg-teal-200 placeholder:text-teal-900"
             ref={eventRef}
           />
         </p>
-        <Button
-          // type="submit"
-          // name="_action"
-          // value="event"
+        <button
           onClick={() => {
             const textarea = eventRef.current;
 
             if (!textarea) return;
 
-            const remoteEvent = JSON.parse(textarea.value) as Event;
+            const isArray = Array.isArray(JSON.parse(textarea.value));
+            const events = z
+              .array(EventSchema)
+              .safeParse(
+                isArray
+                  ? JSON.parse(textarea.value)
+                  : [JSON.parse(textarea.value)],
+              );
 
-            setRemoteEvents((prevRemoteEvents) => [
-              ...prevRemoteEvents,
-              remoteEvent,
-            ]);
+            if (!events.success) {
+              alert(events.error.message);
+
+              return;
+            }
+
+            setEvents((prevEvents) => [...prevEvents, ...events.data]);
 
             textarea.value = "";
+            console.info(
+              `imported ${events.data.length} events from ${events.data[0].sender}`,
+            );
           }}
           className={clsx([
-            "h-[44px] col-span-2",
-            "border-teal-900 bg-teal-200 text-teal-900 hover:bg-teal-400",
+            "h-[44px] col-span-1",
+            "border-teal-900 bg-teal-200 text-teal-900 hover:bg-teal-400 border-2",
           ])}
         >
           Add event
-        </Button>
-        {/* </Form> */}
+        </button>
+      </section>
+      <section className="grid grid-cols-1 space-y-2">
+        <button
+          className="h-[44px] bg-indigo-100 w-full border-2 text-indigo-900 border-indigo-900 hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-indigo-100 disabled:text-indigo-300 disabled:border-indigo-300 col-span-4"
+          onClick={() => {
+            const emmitedEvents = events.filter(
+              (event) => event.sender === username,
+            );
+            navigator.clipboard.writeText(JSON.stringify(emmitedEvents));
+            console.info(
+              `copied ${emmitedEvents.length} events emmited by you`,
+            );
+          }}
+        >
+          Copy events for the peer
+        </button>
         <ol className="space-y-2">
-          {[...events, ...remoteEvents].map((event, index) => {
+          {events.map((event, index) => {
+            function getColors(type: Event["type"]) {
+              if (type === "offer")
+                return "bg-pink-200 text-pink-900 border-pink-900";
+              if (type === "answer")
+                return "bg-orange-200 text-orange-900 border-orange-900";
+              if (type === "candidate")
+                return "bg-yellow-200 text-yellow-900 border-yellow-900";
+            }
+
+            function getHoverColors(type: Event["type"]) {
+              if (type === "offer") return "hover:bg-pink-400";
+              if (type === "answer") return "hover:bg-orange-400";
+              if (type === "candidate") return "hover:bg-yellow-400";
+            }
+
             return (
-              <Event
-                index={index + 1}
-                event={event}
-                key={`event_${event.type}_${event.sender}_${index}`}
-              />
+              <li
+                className={clsx([
+                  "flex items-center p-1 w-full border-2 space-x-2",
+                  getColors(event.type),
+                ])}
+              >
+                <span className="font-bold">{index}</span>
+                <span className="flex-1">
+                  {event.type} {`event =>`} sent by {event.sender}
+                </span>
+                <button
+                  className={clsx(
+                    "p-0.5 border-2 rounded-md",
+                    getHoverColors(event.type),
+                    getColors(event.type),
+                  )}
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(event));
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                  </svg>
+                </button>
+              </li>
             );
           })}
         </ol>
@@ -399,356 +540,8 @@ export default () => {
   );
 };
 
-function useSetup({
-  username,
-  setMediaStream,
-  setPeerConnection,
-}: {
-  username: string;
-  setMediaStream: React.Dispatch<React.SetStateAction<MediaStream | undefined>>;
-  setPeerConnection: React.Dispatch<
-    React.SetStateAction<RTCPeerConnection | undefined>
-  >;
-}) {
-  const fetcher = useFetcher();
-
-  useEffect(() => {
-    if (typeof window === "undefined" || username.length === 0) return;
-
-    async function setup() {
-      // 1. creates peer connection
-      const peerConnection = new RTCPeerConnection(iceServers);
-
-      // 2. sets up media and its video
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { min: 640, ideal: 1920, max: 1920 },
-          height: { min: 480, ideal: 1080, max: 1080 },
-        },
-        audio: false,
-      });
-
-      const localVideo = document.querySelector("#local-video");
-
-      if (localVideo) {
-        (localVideo as HTMLVideoElement).srcObject = mediaStream;
-      }
-
-      // 3. adds its media tracks to the peer connection
-      mediaStream
-        .getTracks()
-        .forEach((track) => peerConnection.addTrack(track, mediaStream));
-
-      // 4. saves the candidates
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          fetcher.submit(
-            {
-              _action: "candidate",
-              event: JSON.stringify({
-                type: "candidate",
-                sender: username,
-                candidate: JSON.stringify(event.candidate),
-              } as Event),
-            },
-            {
-              method: "post",
-            },
-          );
-        } else {
-          console.log("all local candidates have been added =>");
-        }
-      };
-
-      // 5. expects receiving tracks from the peer
-      peerConnection.ontrack = (event) => {
-        const remoteVideo = document.querySelector("#remote-video");
-        if (!remoteVideo) return;
-        const video = remoteVideo as HTMLVideoElement;
-        const mediaStream = event.streams[0];
-        if (video.srcObject !== mediaStream) {
-          video.srcObject = mediaStream;
-        }
-      };
-
-      setMediaStream(mediaStream);
-      setPeerConnection(peerConnection);
-    }
-
-    setup();
-  }, [username]);
-}
-
-function AddAnswerButton({
-  offer,
-  username,
-  remoteEvents,
-  peerConnection,
-}: {
-  offer: OfferEvent | undefined;
-  username: string;
-  remoteEvents: Event[];
-  peerConnection: RTCPeerConnection | undefined;
-}) {
-  const candidateEvents = remoteEvents.filter((event) => {
-    return event.type === "candidate";
-  });
-  const _candidates = z.array(CandidateEventSchema).safeParse(candidateEvents);
-  const candidates = _candidates.success
-    ? _candidates.data.map((candidate) => candidate)
-    : [];
-
-  const answerEvent = remoteEvents.find((event) => {
-    return event.type === "answer";
-  });
-  const _answer = AnswerEventSchema.safeParse(answerEvent);
-  const answer = _answer.success ? _answer.data : undefined;
-
-  return (
-    <Button
-      className="w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-2"
-      // disabled={offer === undefined || username === offer?.sender}
-      disabled={
-        offer === undefined ||
-        answer === undefined ||
-        answer.sender === username ||
-        peerConnection === undefined ||
-        candidates.length < 2
-      }
-      onClick={async () => {
-        invariant(offer, '"offer" is required to create an answer');
-        invariant(answer, '"offer" is required to create an answer');
-        invariant(
-          peerConnection,
-          '"peerConnection" is required to create an answer',
-        );
-
-        await peerConnection.setLocalDescription(
-          JSON.parse(offer.sessionDescription),
-        );
-        await peerConnection.setRemoteDescription(
-          JSON.parse(answer.sessionDescription),
-        );
-
-        candidates
-          .filter(({ sender }) => sender !== username)
-          .forEach(({ candidate, sender }) => {
-            console.log(`${username} added an ice candidate from ${sender} =>`);
-            peerConnection.addIceCandidate(JSON.parse(candidate));
-          });
-      }}
-    >
-      Add answer
-    </Button>
-  );
-}
-
-function AnswerButton({
-  offer,
-  username,
-  candidates,
-  peerConnection,
-}: {
-  offer: OfferEvent | undefined;
-  username: string;
-  candidates: CandidateEvent[];
-  peerConnection?: RTCPeerConnection;
-}) {
-  const fetcher = useFetcher();
-
-  return (
-    <Button
-      className="w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-4"
-      disabled={offer === undefined || username === offer?.sender}
-      onClick={async () => {
-        invariant(offer, '"offer" is required to create an answer');
-        invariant(
-          peerConnection,
-          '"peerConnection" is required to create an answer',
-        );
-
-        // 1. gets the offer value from the received event
-        const { sessionDescription } = offer;
-
-        // 2. sets remote description using the offer
-        peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
-
-        // 3. creates the answer using the offer
-        const answer = await peerConnection.createAnswer();
-
-        // 4. sets local description using the answer
-        peerConnection.setLocalDescription(answer);
-
-        candidates
-          .filter(({ sender }) => sender !== username)
-          .forEach(({ candidate, sender }) => {
-            console.log(`${username} added an ice candidate from ${sender} =>`);
-            peerConnection.addIceCandidate(JSON.parse(candidate));
-          });
-
-        // 5. sends the answer as the "answer" event
-        fetcher.submit(
-          {
-            _action: "answer",
-            event: JSON.stringify({
-              type: "answer",
-              sender: username,
-              sessionDescription: JSON.stringify(answer),
-            } as Event),
-          },
-          {
-            method: "post",
-          },
-        );
-      }}
-    >
-      Create answer
-    </Button>
-  );
-}
-
-function OfferButton({
-  offer,
-  username,
-  peerConnection,
-}: {
-  offer: OfferEvent | undefined;
-  username: string;
-  peerConnection?: RTCPeerConnection;
-}) {
-  const fetcher = useFetcher();
-
-  return (
-    <fetcher.Form name="_action">
-      <button
-        disabled={offer !== undefined}
-        className="p-4 bg-blue-100 w-full border-2 text-blue-900 border-blue-900 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-blue-100 disabled:text-blue-300 disabled:border-blue-300 col-span-4"
-        type="submit"
-        onClick={async () => {
-          invariant(
-            peerConnection,
-            '"peerConnection" is required to create an offer',
-          );
-
-          // 1. creates offer `.createOffer()`
-          const offer = await peerConnection.createOffer({
-            offerToReceiveAudio: true,
-            offerToReceiveVideo: true,
-          });
-
-          // 2. sets setLocalDescription
-          peerConnection.setLocalDescription(offer);
-
-          // 3. sends the offer as the "offer" event
-          fetcher.submit(
-            {
-              _action: "offer",
-              event: JSON.stringify({
-                type: "offer",
-                sender: username,
-                sessionDescription: JSON.stringify(offer),
-              } as Event),
-            },
-            {
-              method: "post",
-            },
-          );
-        }}
-      >
-        Create offer
-      </button>
-    </fetcher.Form>
-  );
-}
-
-function Event({
-  event,
-  index,
-  ...liProps
-}: {
-  event: Event;
-  index: number;
-} & React.LiHTMLAttributes<HTMLLIElement>) {
-  function getColors(type: Event["type"]) {
-    if (type === "offer") return "bg-pink-200 text-pink-900 border-pink-900";
-    if (type === "answer")
-      return "bg-orange-200 text-orange-900 border-orange-900";
-    if (type === "candidate")
-      return "bg-yellow-200 text-yellow-900 border-yellow-900";
-  }
-
-  function getHoverColors(type: Event["type"]) {
-    if (type === "offer") return "hover:bg-pink-400";
-    if (type === "answer") return "hover:bg-orange-400";
-    if (type === "candidate") return "hover:bg-yellow-400";
-  }
-
-  return (
-    <li
-      {...liProps}
-      className={clsx([
-        "flex items-center p-1 w-full border-2 space-x-1",
-        getColors(event.type),
-        liProps.className,
-      ])}
-    >
-      <span className="font-bold">{index}</span>
-      <span className="flex-1">
-        {event.type} {`event =>`} sent by {event.sender}
-      </span>
-      <CopyButton
-        text={JSON.stringify(event)}
-        className={clsx(getColors(event.type), getHoverColors(event.type))}
-      />
-    </li>
-  );
-}
-
-function Button({
-  children,
-  ...buttonProps
-}: { children: ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...buttonProps}
-      className={clsx([
-        "p-2 bg-gray-900 text-gray-100 disabled:bg-gray-600 disabled:cursor-not-allowed border-2 border-gray-900",
-        buttonProps.className,
-      ])}
-    >
-      {children}
-    </button>
-  );
-}
-
-function CopyButton({
-  text,
-  ...buttonProps
-}: { text: string } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      className={clsx(["p-0.5 border-2 rounded-md", buttonProps.className])}
-      onClick={() => {
-        navigator.clipboard.writeText(text);
-      }}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-      </svg>
-    </button>
-  );
-}
+// high level instructions gotten from mdn
+// https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling
 
 // caller
 function _callerSetup() {
