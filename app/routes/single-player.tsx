@@ -1,5 +1,4 @@
 import type { HeadersFunction, V2_MetaFunction } from "@remix-run/cloudflare";
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 export const headers: HeadersFunction = () => ({
@@ -41,7 +40,6 @@ export default () => {
   const [offer, setOffer] = useState("");
   const [answer, setAnswer] = useState("");
   const [step, setStep] = useState<Step>("media");
-  // const [sources, setSources] = useState<MediaDeviceInfo[]>([]);
   const [local, setLocal] = useState<Connection>({
     mediaStream: undefined,
     peerConnection: undefined,
@@ -54,14 +52,6 @@ export default () => {
   // 1. get audio and video options available for the user
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    // get possible local user media inputs options
-    // function getSources() {
-    //   console.log("getting sources =>");
-    //   return navigator.mediaDevices.enumerateDevices();
-    // }
-
-    // getSources().then(setSources);
 
     // setup browser-dependant initial state
     setLocal((prevLocal) => ({
@@ -76,38 +66,25 @@ export default () => {
   }, []);
 
   return (
-    <main className="max-w-3xl mx-auto space-y-5">
-      {/* <section>
-        <p>
-          <label htmlFor="audioSrc">Audio source:</label>
-          <select id="audioSrc">
-            <option value={undefined}>Not selected</option>
-            {sources
-              .filter(({ kind }) => kind === "audioinput")
-              .map(({ deviceId, label }) => (
-                <option key={`audio_source_${deviceId}`} value={deviceId}>
-                  {label}
-                </option>
-              ))}
-          </select>
-        </p>
-        <p>
-          <label htmlFor="videoSrc">Video source:</label>
-          <select className="w-24" id="videoSrc">
-            <option value={undefined}>Not selected</option>
-            {sources
-              .filter(({ kind }) => kind === "videoinput")
-              .map(({ deviceId, label }) => (
-                <option key={`video_source_${deviceId}`} value={deviceId}>
-                  {label}
-                </option>
-              ))}
-          </select>
-        </p>
-      </section> */}
+    <main className="max-w-3xl mx-auto space-y-2 py-2">
+      <section className="grid grid-cols-2 gap-2">
+        <video
+          className="border-2 border-gray-900 w-full h-[215.5px]"
+          id="local-video"
+          autoPlay
+          playsInline
+        />
+        <video
+          className="border-2 border-gray-900 w-full h-[215.5px]"
+          id="remote-video"
+          autoPlay
+          playsInline
+        />
+      </section>
       <section className="grid grid-flow-col-dense gap-1">
-        <Button
+        <button
           disabled={step !== "media"}
+          className="p-4 w-full bg-fuchsia-200 border-2 border-fuchsia-900 text-fuchsia-900 hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:bg-fuchsia-100 disabled:text-fuchsia-300 disabled:border-fuchsia-300 col-span-4"
           // 2. get local media and set the local video up
           onClick={async () => {
             function getMediaStream() {
@@ -137,9 +114,10 @@ export default () => {
           }}
         >
           Get media
-        </Button>
-        <Button
+        </button>
+        <button
           disabled={step !== "peerConnection"}
+          className="p-4 w-full bg-red-200 border-2 border-red-900 text-red-900 hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300 disabled:border-red-300 col-span-4"
           // 3. establish peer connection:
           // - peers need to share media tracks
           // - peers need to share ice candidates
@@ -212,8 +190,9 @@ export default () => {
           }}
         >
           Create peer connection
-        </Button>
-        <Button
+        </button>
+        <button
+          className="p-4 bg-blue-100 w-full border-2 text-blue-900 border-blue-900 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-blue-100 disabled:text-blue-300 disabled:border-blue-300 col-span-4"
           disabled={step !== "createOffer"}
           // 4. the local user, the one who initiates the conection, creates the offer
           onClick={async () => {
@@ -235,9 +214,10 @@ export default () => {
           }}
         >
           Create offer
-        </Button>
-        <Button
+        </button>
+        <button
           disabled={step !== "setOffer"}
+          className="p-4 bg-orange-100 w-full border-2 text-orange-900 border-orange-900 hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-orange-100 disabled:text-orange-300 disabled:border-orange-300 col-span-4"
           // 5. with this offer:
           // - the local user sets it as its local description
           // - the remote user sets it as its remote description
@@ -263,9 +243,10 @@ export default () => {
           }}
         >
           Set offer
-        </Button>
-        <Button
+        </button>
+        <button
           disabled={step !== "createAnswer"}
+          className="p-4 w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-4"
           // 6. the remote user, the one who accepts the conection, creates the answer
           onClick={async () => {
             const { peerConnection: remotePeerConnection } = remote;
@@ -283,12 +264,13 @@ export default () => {
           }}
         >
           Create answer
-        </Button>
-        <Button
+        </button>
+        <button
           // 7. with this answer:
           // - the local user sets it as its remote description
           // - the remote user sets it as its local description
           disabled={step !== "setAnswer"}
+          className="p-4 bg-purple-100 w-full border-2 text-purple-900 border-purple-900 hover:bg-purple-400 disabled:cursor-not-allowed disabled:bg-purple-100 disabled:text-purple-300 disabled:border-purple-300 col-span-4"
           onClick={async () => {
             const { peerConnection: localPeerConnection } = local;
             const { peerConnection: remotePeerConnection } = remote;
@@ -310,31 +292,41 @@ export default () => {
             setStep(undefined);
           }}
         >
-          Set answer
-        </Button>
+          Add answer
+        </button>
       </section>
-      <section className="flex flex-row">
-        <video className="w-1/2" id="local-video" autoPlay playsInline />
-        <video className="w-1/2" id="remote-video" autoPlay playsInline />
-      </section>
-      <section className="flex flex-row">
-        <textarea className="w-3/4 h-[300px]" value={offer} readOnly />
-        <textarea className="w-3/4 h-[300px]" value={answer} readOnly />
+      <section className="grid grid-cols-2 gap-2">
+        <p className="flex flex-col">
+          <label
+            className="text-blue-900 border-2 border-blue-900 w-fit border-b-0 p-1"
+            htmlFor="offer"
+          >
+            Offer
+          </label>
+          <textarea
+            id="offer"
+            className="h-[300px] p-1 border-2 border-blue-900 bg-blue-200"
+            readOnly
+            disabled
+            defaultValue={offer}
+          />
+        </p>
+        <p className="flex flex-col">
+          <label
+            className="text-green-900 border-2 border-green-900 w-fit border-b-0 p-1"
+            htmlFor="answer"
+          >
+            Answer
+          </label>
+          <textarea
+            id="answer"
+            className="h-[300px] p-1 border-2 border-green-900 bg-green-200"
+            disabled
+            readOnly
+            defaultValue={answer}
+          />
+        </p>
       </section>
     </main>
   );
 };
-
-function Button({
-  children,
-  ...buttonProps
-}: { children: ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      className="p-4 bg-gray-900 text-gray-100 disabled:bg-gray-600 disabled:cursor-not-allowed"
-      {...buttonProps}
-    >
-      {children}
-    </button>
-  );
-}
