@@ -2,7 +2,7 @@
 In this repo you'll learn how to create a [WebRTC connection](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection) connection between your local computer and a peer computer (a new tab is OK)
 
 ### Demo
-In this demo you can see how an user is created every time you refresh - [demo](https://remix-d1-kysely-demo.pages.dev/)
+In this demo you can find all the demos this repository holds - [demo](https://remix-peer-video-call.pages.dev/)
 
 ### Files to pay attention
 1. [single-player.tsx](/app/routes/single-player.tsx)
