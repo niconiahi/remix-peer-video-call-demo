@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   type HeadersFunction,
   type V2_MetaFunction,
@@ -539,36 +538,3 @@ export default () => {
     </main>
   );
 };
-
-// high level instructions gotten from mdn
-// https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling
-
-// caller
-function _callerSetup() {
-  // 1. creates peer connection
-  // 2. sets up media and its video
-  // 3. adds its media tracks to the peer connection
-}
-
-function _createOffer() {
-  // 1. creates offer `.createOffer()`
-  // 2. sets setLocalDescription
-  // 3. sends the offer as the "offer" event
-}
-
-function _addAnswer() {
-  // 1. gets the offer value from the received event
-  // 2. sets remote description using the offer
-}
-
-// callee
-function _createAnswer() {
-  // 1. creates peer connection
-  // 2. gets the offer value from the received event
-  // 3. sets remote description using the offer
-  // 4. sets up media and its video
-  // 5. adds its media tracks to the peer connection
-  // 6. creates the answer using the offer
-  // 7. sets local description using the answer
-  // 8. sends the answer as the "answer" event
-}
