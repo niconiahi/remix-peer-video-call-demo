@@ -1,5 +1,5 @@
 {
-  "name": "remix-peer-video-call",
+  "name": "remix-peer-video-call-demo",
   "private": true,
   "sideEffects": false,
   "type": "module",
