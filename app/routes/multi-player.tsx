@@ -292,7 +292,6 @@ export default () => {
         </button>
         <button
           className="p-4 w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-2"
-          // disabled={offer === undefined || username === offer?.sender}
           disabled={
             offerEvent === undefined ||
             answerEvent === undefined ||
