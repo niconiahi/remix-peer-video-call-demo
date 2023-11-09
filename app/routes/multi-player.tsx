@@ -29,61 +29,33 @@ const iceServers = {
   ],
 };
 
-type Event =
-  | {
-      type: "offer";
-      sender: string;
-      sessionDescription: string;
-    }
-  | {
-      type: "answer";
-      sender: string;
-      sessionDescription: string;
-    }
-  | {
-      type: "candidate";
-      sender: string;
-      candidate: string;
-    };
-
-const EventSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("offer"),
-    sender: z.string(),
-    sessionDescription: z.string(),
-  }),
-  z.object({
-    type: z.literal("answer"),
-    sender: z.string(),
-    sessionDescription: z.string(),
-  }),
-  z.object({
-    type: z.literal("candidate"),
-    sender: z.string(),
-    candidate: z.string(),
-  }),
-]);
-
-const OfferEventSchema = z.object({
+const offerEventSchema = z.object({
   type: z.literal("offer"),
   sender: z.string(),
   sessionDescription: z.string(),
 });
-type OfferEvent = z.infer<typeof OfferEventSchema>;
+type OfferEvent = z.infer<typeof offerEventSchema>;
 
-const AnswerEventSchema = z.object({
+const answerEventSchema = z.object({
   type: z.literal("answer"),
   sender: z.string(),
   sessionDescription: z.string(),
 });
-type AnswerEvent = z.infer<typeof AnswerEventSchema>;
+type AnswerEvent = z.infer<typeof answerEventSchema>;
 
-const CandidateEventSchema = z.object({
+const candidateEventSchema = z.object({
   type: z.literal("candidate"),
   sender: z.string(),
   candidate: z.string(),
 });
-type CandidateEvent = z.infer<typeof CandidateEventSchema>;
+type CandidateEvent = z.infer<typeof candidateEventSchema>;
+
+const eventSchema = z.discriminatedUnion("type", [
+  offerEventSchema,
+  answerEventSchema,
+  candidateEventSchema,
+]);
+type Event = z.infer<typeof eventSchema>;
 
 export default () => {
   const eventRef = useRef<HTMLTextAreaElement>(null);
@@ -93,19 +65,19 @@ export default () => {
   const [peerConnection, setPeerConnection] = useState<
     RTCPeerConnection | undefined
   >(undefined);
-  const _candidateEvents = z.array(CandidateEventSchema).safeParse(
+  const _candidateEvents = z.array(candidateEventSchema).safeParse(
     events.filter((event) => {
       return event.type === "candidate";
     }),
   );
   const candidateEvents = _candidateEvents.success ? _candidateEvents.data : [];
-  const _answerEvent = AnswerEventSchema.safeParse(
+  const _answerEvent = answerEventSchema.safeParse(
     events.find((event) => {
       return event.type === "answer";
     }),
   );
   const answerEvent = _answerEvent.success ? _answerEvent.data : undefined;
-  const _offerEvent = OfferEventSchema.safeParse(
+  const _offerEvent = offerEventSchema.safeParse(
     events.find((event) => {
       return event.type === "offer";
     }),
@@ -434,7 +406,7 @@ export default () => {
 
             const isArray = Array.isArray(JSON.parse(textarea.value));
             const events = z
-              .array(EventSchema)
+              .array(eventSchema)
               .safeParse(
                 isArray
                   ? JSON.parse(textarea.value)
