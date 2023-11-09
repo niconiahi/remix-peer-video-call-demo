@@ -7,6 +7,18 @@ import clsx from "clsx";
 import { useRef, useState } from "react";
 import invariant from "tiny-invariant";
 import { z } from "zod";
+import type {
+  AnswerEvent,
+  CandidateEvent,
+  OfferEvent,
+  Event,
+} from "~/utils/event";
+import {
+  answerEventSchema,
+  candidateEventSchema,
+  eventSchema,
+  offerEventSchema,
+} from "~/utils/event";
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
@@ -28,34 +40,6 @@ const iceServers = {
     },
   ],
 };
-
-const offerEventSchema = z.object({
-  type: z.literal("offer"),
-  sender: z.string(),
-  sessionDescription: z.string(),
-});
-type OfferEvent = z.infer<typeof offerEventSchema>;
-
-const answerEventSchema = z.object({
-  type: z.literal("answer"),
-  sender: z.string(),
-  sessionDescription: z.string(),
-});
-type AnswerEvent = z.infer<typeof answerEventSchema>;
-
-const candidateEventSchema = z.object({
-  type: z.literal("candidate"),
-  sender: z.string(),
-  candidate: z.string(),
-});
-type CandidateEvent = z.infer<typeof candidateEventSchema>;
-
-const eventSchema = z.discriminatedUnion("type", [
-  offerEventSchema,
-  answerEventSchema,
-  candidateEventSchema,
-]);
-type Event = z.infer<typeof eventSchema>;
 
 export default () => {
   const eventRef = useRef<HTMLTextAreaElement>(null);
