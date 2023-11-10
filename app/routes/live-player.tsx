@@ -28,6 +28,7 @@ import {
   historyEventSchema,
   type HistoryEvent,
 } from "~/routes/broadcaster";
+import { getEnv } from "~/utils/env";
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
@@ -84,15 +85,16 @@ export async function action({ request }: ActionArgs) {
   }
 }
 
-export function loader({ request }: LoaderArgs) {
+export function loader({ request, context }: LoaderArgs) {
+  const env = getEnv(context);
   const url = new URL(request.url);
   const host = url.searchParams.get("host");
   const username = url.searchParams.get("username");
-  return json({ host, username });
+  return json({ host, username, environment: env.ENVIRONMENT });
 }
 
 export default () => {
-  const { host, username } = useLoaderData<typeof loader>();
+  const { host, username, environment } = useLoaderData<typeof loader>();
   const [events, setEvents] = useState<Event[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [peerConnection, setPeerConnection] = useState<
@@ -122,7 +124,7 @@ export default () => {
 
     async function setupWebsocket(username: string, host: string) {
       const webSocket = new WebSocket(
-        toWebsocket(`${getOrigin({ ENVIRONMENT: "development" })}/broadcaster`),
+        toWebsocket(`${getOrigin({ ENVIRONMENT: environment })}/broadcaster`),
       );
       webSocket.addEventListener("open", () => {
         console.log("connection established =>");
