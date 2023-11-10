@@ -8,7 +8,8 @@
     "dev": "remix dev --manual -c \"npm run start\"",
     "dev:worker": "wrangler dev",
     "start": "wrangler pages dev --compatibility-date=2023-06-21 ./public",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test.unit": "vitest"
   },
   "dependencies": {
     "@remix-run/cloudflare": "^1.19.3",
@@ -38,6 +39,8 @@
     "prettier": "^3.0.1",
     "tailwindcss": "^3.3.3",
     "typescript": "^5.0.4",
+    "vite": "^4.5.0",
+    "vitest": "^0.34.6",
     "wrangler": "^3.1.1"
   },
   "engines": {
