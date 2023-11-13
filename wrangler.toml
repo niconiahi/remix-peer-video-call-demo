@@ -1,0 +1,7 @@
+[[durable_objects.bindings]]
+name = "BROADCASTER"
+class_name = "Broadcaster"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Broadcaster"]
