@@ -125,7 +125,6 @@ export default () => {
       const webSocket = new WebSocket(
         toWebsocket(`${getOrigin({ ENVIRONMENT: environment })}/broadcaster`),
       );
-      console.log("setupWebsocket ~ webSocket:", webSocket);
       webSocket.addEventListener("open", () => {
         console.log("connection established =>");
         if (username !== host) {
