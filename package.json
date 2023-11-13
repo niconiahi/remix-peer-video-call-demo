@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "remix build",
-    "dev": "remix dev --manual -c \"npm run start\"",
-    "dev:worker": "wrangler dev",
+    "dev": "remix dev --manual -c \"npm run dev:wrangler\"",
+    "dev:wrangler": "wrangler pages dev --compatibility-date=2023-06-21 ./public --do BROADCASTER",
     "start": "wrangler pages dev --compatibility-date=2023-06-21 ./public",
     "typecheck": "tsc",
     "test.unit": "vitest"
