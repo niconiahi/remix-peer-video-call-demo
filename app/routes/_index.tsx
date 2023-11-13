@@ -16,6 +16,12 @@ export default function Index() {
         >
           Multiplayer player
         </Link>
+        <Link
+          className="p-4 bg-green-100 w-full border-2 text-green-900 border-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-4"
+          to="peer-player"
+        >
+          Peer player
+        </Link>
       </ul>
     </main>
   );
