@@ -10,10 +10,16 @@ export const historyEventSchema = z.object({
   type: z.literal("history"),
   sender: z.string(),
 });
+export const pongEventSchema = z.object({
+  type: z.literal("pong"),
+  sender: z.literal("server"),
+  value: z.string(),
+});
 export const eventsEventSchema = z.object({
   type: z.literal("events"),
   sender: z.string(),
 });
+export type PongEvent = z.infer<typeof pongEventSchema>;
 export type HistoryEvent = z.infer<typeof historyEventSchema>;
 export const eventSchema = z.discriminatedUnion("type", [
   offerEventSchema,
@@ -21,6 +27,7 @@ export const eventSchema = z.discriminatedUnion("type", [
   candidateEventSchema,
   historyEventSchema,
   eventsEventSchema,
+  pongEventSchema,
 ]);
 
 export function loader({ request }: LoaderArgs) {
@@ -47,9 +54,21 @@ export function loader({ request }: LoaderArgs) {
     console.log(`${event.sender} sent the event => ${event.type}`);
     server.send(JSON.stringify(event));
   });
+  setInterval(() => {
+    const event = pongEventSchema.parse({
+      sender: "server",
+      type: "pong",
+      value: generateHash(),
+    } as PongEvent);
+    server.send(JSON.stringify(event));
+  }, 3000);
 
   return new Response(null, {
     status: 101,
     webSocket: client,
   });
+}
+
+function generateHash() {
+  return (Math.random() + 1).toString(36).substring(7);
 }

@@ -10,7 +10,6 @@ import type {
 } from "@remix-run/cloudflare";
 import { Form, useLoaderData } from "@remix-run/react";
 import clsx from "clsx";
-// import invariant from "tiny-invariant";
 import type {
   // AnswerEvent,
   CandidateEvent,
@@ -126,6 +125,7 @@ export default () => {
       const webSocket = new WebSocket(
         toWebsocket(`${getOrigin({ ENVIRONMENT: environment })}/broadcaster`),
       );
+      console.log("setupWebsocket ~ webSocket:", webSocket);
       webSocket.addEventListener("open", () => {
         console.log("connection established =>");
         if (username !== host) {
@@ -138,8 +138,17 @@ export default () => {
         }
       });
       webSocket.addEventListener("message", ({ data }) => {
-        console.log("client data =>", data);
         const event = eventSchema.parse(JSON.parse(data));
+        if (event.type === "pong") {
+          const date = new Date();
+          console.log(
+            "pong recieved at time =>",
+            `${date.getMinutes()}:${date.getSeconds()}:${date.getMilliseconds()}`,
+            "the value recieved was =>",
+            `${event.value}`,
+          );
+          return;
+        }
         if (event.sender === username) {
           return;
         }
@@ -147,7 +156,6 @@ export default () => {
           "this event was recieved from your peer =>",
           `${event.sender} => ${event.type}`,
         );
-
         if (event.type === "history") {
           console.log('handling "history" event, sent from peer =>');
         }
