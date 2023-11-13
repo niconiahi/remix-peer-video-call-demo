@@ -36,6 +36,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
     });
   }
   const host = result.data;
-  const id = env.BROADCASTER.idFromName(host);
-  return new Response(`broadcaster in being reached => its id is => ${id}`);
+  return new Response(`broadcaster in being reached => the host is => ${host}`);
+  // const id = env.BROADCASTER.idFromName(host);
+  // return new Response(`broadcaster in being reached => its id is => ${id}`);
 };
