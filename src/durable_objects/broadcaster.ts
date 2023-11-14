@@ -26,6 +26,7 @@ export class Broadcaster {
 
   constructor(state: State) {
     this.state = state;
+    this.state.connections = state.connections ?? [];
   }
 
   async fetch(request: Request) {
