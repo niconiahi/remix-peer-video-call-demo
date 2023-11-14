@@ -26,7 +26,9 @@ export class Broadcaster {
 
   constructor(state: State) {
     this.state = state;
+    console.log("state before setting connections =>", state);
     this.state.connections = state.connections ?? [];
+    console.log("state after setting connections =>", state);
   }
 
   async fetch(request: Request) {
