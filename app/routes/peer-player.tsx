@@ -26,7 +26,7 @@ import {
   eventSchema,
   historyEventSchema,
   type HistoryEvent,
-} from "@/durable_objects/broadcaster";
+} from "@/src/durable_objects/broadcaster";
 import { getEnv } from "~/utils/env";
 
 export const headers: HeadersFunction = () => ({

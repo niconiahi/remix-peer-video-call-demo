@@ -37,6 +37,10 @@ type State = {
   connections: WebSocket[];
 };
 
+function generateHash() {
+  return (Math.random() + 1).toString(36).substring(7);
+}
+
 export class Broadcaster {
   public state: State;
   private env: Env;
@@ -57,8 +61,4 @@ export class Broadcaster {
     } as PongEvent);
     return new Response(JSON.stringify(event));
   }
-}
-
-function generateHash() {
-  return (Math.random() + 1).toString(36).substring(7);
 }
