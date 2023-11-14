@@ -6,9 +6,9 @@
   "scripts": {
     "build": "remix build",
     "dev": "run-p dev:*",
-    "dev:worker": "wrangler dev --remote --compatibility-date=2023-06-21 --config=src/wrangler.toml src/worker.ts",
+    "dev:worker": "wrangler dev --config=src/wrangler.toml src/worker.ts",
     "dev:remix": "remix dev --manual -c \"wrangler pages dev --do BROADCASTER=Broadcaster@src/worker.ts --compatibility-date=2023-06-21 ./public\"" ,
-    "deploy:worker": "wrangler deploy --compatibility-date=2023-06-21 --config=src/wrangler.toml src/worker.ts",
+    "deploy:worker": "wrangler deploy --config=src/wrangler.toml src/worker.ts",
     "start": "wrangler pages dev --compatibility-date=2023-06-21 ./public",
     "typecheck": "tsc",
     "test.unit": "vitest"
