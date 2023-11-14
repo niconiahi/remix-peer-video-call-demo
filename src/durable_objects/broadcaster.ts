@@ -26,9 +26,6 @@ export class Broadcaster {
 
   constructor(state: State) {
     this.state = state;
-    console.log("state before setting connections =>", state);
-    this.state.connections = state.connections ?? [];
-    console.log("state after setting connections =>", state);
   }
 
   async fetch(request: Request) {
@@ -52,7 +49,11 @@ export class Broadcaster {
     // by Cloudflare. That's why omit this case
     // https://developers.cloudflare.com/workers/examples/websockets/
     server.accept();
-    this.state.connections.push(server);
+    if (this.state.connections) {
+      this.state.connections.push(server);
+    } else {
+      this.state.connections = [server];
+    }
     server.addEventListener("message", ({ data }) => {
       console.log("server data =>", data);
       const result = eventSchema.safeParse(JSON.parse(data));
