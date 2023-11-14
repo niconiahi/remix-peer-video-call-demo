@@ -5,37 +5,21 @@ import {
   offerEventSchema,
 } from "~/utils/event";
 
-export const historyEventSchema = z.object({
-  type: z.literal("history"),
+export const guestEventSchema = z.object({
+  type: z.literal("guest"),
   sender: z.string(),
 });
-export const pongEventSchema = z.object({
-  type: z.literal("pong"),
-  sender: z.literal("server"),
-  value: z.string(),
-});
-export const eventsEventSchema = z.object({
-  type: z.literal("events"),
-  sender: z.string(),
-});
-export type PongEvent = z.infer<typeof pongEventSchema>;
-export type HistoryEvent = z.infer<typeof historyEventSchema>;
+export type GuestEvent = z.infer<typeof guestEventSchema>;
 export const eventSchema = z.discriminatedUnion("type", [
   offerEventSchema,
   answerEventSchema,
   candidateEventSchema,
-  historyEventSchema,
-  eventsEventSchema,
-  pongEventSchema,
+  guestEventSchema,
 ]);
 type Event = z.infer<typeof eventSchema>;
 type State = {
   connections: WebSocket[];
 };
-
-function generateHash() {
-  return (Math.random() + 1).toString(36).substring(7);
-}
 
 export class Broadcaster {
   public state: State;
@@ -45,31 +29,18 @@ export class Broadcaster {
   }
 
   async fetch(request: Request) {
-    if (request.method === "GET") {
-      const event = pongEventSchema.parse({
-        sender: "server",
-        type: "pong",
-        value: generateHash(),
-      } as PongEvent);
-
-      return new Response(JSON.stringify(event));
-    }
-    if (request.method === "POST") {
-      const upgradeHeader = request.headers.get("Upgrade");
-      if (!upgradeHeader || upgradeHeader !== "websocket") {
-        return new Response("Expected Upgrade: websocket", { status: 426 });
-      }
-
-      const [client, server] = Object.values(new WebSocketPair());
-      await this.handleConnection(server);
-
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      });
+    const upgradeHeader = request.headers.get("Upgrade");
+    if (!upgradeHeader || upgradeHeader !== "websocket") {
+      return new Response("Expected Upgrade: websocket", { status: 426 });
     }
 
-    return new Response("method not allowed =>", { status: 405 });
+    const [client, server] = Object.values(new WebSocketPair());
+    await this.handleConnection(server);
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
   }
 
   handleConnection(server: WebSocket) {

@@ -22,10 +22,10 @@ import {
   offerEventSchema,
 } from "~/utils/event";
 import { z } from "zod";
+import type { GuestEvent } from "@/src/durable_objects/broadcaster";
 import {
   eventSchema,
-  historyEventSchema,
-  type HistoryEvent,
+  guestEventSchema,
 } from "@/src/durable_objects/broadcaster";
 import { getEnv } from "~/utils/env";
 
@@ -122,32 +122,24 @@ export default () => {
     if (!username || !host) return;
 
     async function setupWebsocket(username: string, host: string) {
-      const webSocket = new WebSocket(
-        toWebsocket(`${getOrigin({ ENVIRONMENT: environment })}/broadcaster`),
+      const ws = new WebSocket(
+        toWebsocket(
+          `${getOrigin({ ENVIRONMENT: environment })}/broadcaster?host=${host}`,
+        ),
       );
-      webSocket.addEventListener("open", () => {
+      ws.addEventListener("open", () => {
         console.log("connection established =>");
         if (username !== host) {
-          console.log('sending "history" event =>');
-          const event = historyEventSchema.parse({
-            type: "history",
+          console.log('sending "guest" event =>');
+          const event = guestEventSchema.parse({
+            type: "guest",
             sender: username,
-          } as HistoryEvent);
-          webSocket.send(JSON.stringify(event));
+          } as GuestEvent);
+          ws.send(JSON.stringify(event));
         }
       });
-      webSocket.addEventListener("message", ({ data }) => {
+      ws.addEventListener("message", ({ data }) => {
         const event = eventSchema.parse(JSON.parse(data));
-        if (event.type === "pong") {
-          const date = new Date();
-          console.log(
-            "pong recieved at time =>",
-            `${date.getMinutes()}:${date.getSeconds()}:${date.getMilliseconds()}`,
-            "the value recieved was =>",
-            `${event.value}`,
-          );
-          return;
-        }
         if (event.sender === username) {
           return;
         }
@@ -155,20 +147,12 @@ export default () => {
           "this event was recieved from your peer =>",
           `${event.sender} => ${event.type}`,
         );
-        if (event.type === "history") {
-          console.log('handling "history" event, sent from peer =>');
-        }
-        if (event.type === "events") {
-          console.log('handling "events" event, sent from peer =>');
-        }
-        if (event.type === "offer") {
-          console.log('handling "offer" event, sent from peer =>');
-        }
-        if (event.type === "answer") {
-          console.log('handling "answer" event, sent from peer =>');
-        }
-        if (event.type === "candidate") {
-          console.log('handling "candidate" event, sent from peer =>');
+        if (event.type === "guest") {
+          for (const event of events) {
+            ws.send(JSON.stringify(event));
+          }
+        } else {
+          setEvents((events) => [...events, event]);
         }
       });
     }
