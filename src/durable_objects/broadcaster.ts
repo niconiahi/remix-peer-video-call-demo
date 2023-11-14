@@ -51,9 +51,6 @@ export class Broadcaster {
   }
 
   async fetch(request: Request) {
-    if (request.method !== "POST") {
-      return new Response("method not allowed =>", { status: 405 });
-    }
     const event = pongEventSchema.parse({
       sender: "server",
       type: "pong",
