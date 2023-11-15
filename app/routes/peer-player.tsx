@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getOrigin, toWebsocket } from "~/utils/origin";
 
 import { json, redirect } from "@remix-run/cloudflare";
@@ -119,6 +119,10 @@ export default () => {
   );
   const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
 
+  const getEvents = useCallback(() => {
+    return events;
+  }, [events]);
+
   useEffect(() => {
     if (!username || !host) return;
 
@@ -149,6 +153,7 @@ export default () => {
           `${event.sender} => ${event.type}`,
         );
         if (event.type === "guest") {
+          const events = getEvents();
           console.log(
             'all these events are going to be sent to the "guest" =>',
             events,
@@ -163,6 +168,7 @@ export default () => {
         }
       });
     }
+
     async function setupPeerConnection(username: string, host: string) {
       // 1. creates peer connection
       const peerConnection = new RTCPeerConnection(iceServers);
@@ -240,7 +246,7 @@ export default () => {
 
     setupPeerConnection(username, host);
     setupWebsocket(username, host);
-  }, [username, host, events]);
+  }, [username, host, getEvents]);
 
   if (!username) {
     return (
