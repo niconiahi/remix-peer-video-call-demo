@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getOrigin, toWebsocket } from "~/utils/origin";
 
 import { json, redirect } from "@remix-run/cloudflare";
@@ -95,6 +95,7 @@ export function loader({ request, context }: LoaderArgs) {
 export default () => {
   const { host, username, environment } = useLoaderData<typeof loader>();
   const [events, setEvents] = useState<Event[]>([]);
+  const eventsRef = useRef<Event[]>([]);
   console.log("events =>", events);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [peerConnection, setPeerConnection] = useState<
@@ -119,8 +120,8 @@ export default () => {
   );
   const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
 
-  const getEvents = useCallback(() => {
-    return events;
+  useEffect(() => {
+    eventsRef.current = events;
   }, [events]);
 
   useEffect(() => {
@@ -153,7 +154,7 @@ export default () => {
           `${event.sender} => ${event.type}`,
         );
         if (event.type === "guest") {
-          const events = getEvents();
+          const events = eventsRef.current;
           console.log(
             'all these events are going to be sent to the "guest" =>',
             events,
@@ -246,7 +247,7 @@ export default () => {
 
     setupPeerConnection(username, host);
     setupWebsocket(username, host);
-  }, [username, host, getEvents]);
+  }, [username, host]);
 
   if (!username) {
     return (
