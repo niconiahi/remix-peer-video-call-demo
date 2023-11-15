@@ -235,6 +235,7 @@ export default () => {
               } as AnswerEvent;
               setEvents((prevEvents) => [...prevEvents, answerEvent]);
 
+              console.log(`sending "${event.type}" event =>`);
               ws.send(JSON.stringify(answerEvent));
             }
 
