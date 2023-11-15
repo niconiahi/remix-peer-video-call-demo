@@ -141,10 +141,7 @@ export default () => {
   useEffect(() => {
     if (!username || !host || !peerConnection || host !== username) return;
 
-    async function createOffer(
-      username: string,
-      peerConnection: RTCPeerConnection,
-    ) {
+    async function createOffer(peerConnection: RTCPeerConnection) {
       // 6. creates offer `.createOffer()`
       const offer = await peerConnection.createOffer({
         offerToReceiveAudio: true,
@@ -153,9 +150,6 @@ export default () => {
 
       // 7. sets setLocalDescription
       peerConnection.setLocalDescription(offer);
-
-      // 8. sends the offer as the "offer" event
-      setPeerConnection(peerConnection);
       setEvents((prevEvents) => [
         ...prevEvents,
         {
@@ -166,7 +160,7 @@ export default () => {
       ]);
     }
 
-    createOffer(username, peerConnection);
+    createOffer(peerConnection);
   }, [username, host, peerConnection]);
 
   useEffect(() => {
@@ -216,7 +210,6 @@ export default () => {
           setEvents((events) => [...events, event]);
           if (event.type === "offer") {
             async function createAnswer(
-              username: string,
               offer: OfferEvent,
               peerConnection: RTCPeerConnection,
             ) {
@@ -235,18 +228,17 @@ export default () => {
               peerConnection.setLocalDescription(answer);
 
               // 11. sends the answer as the "answer" event
-              setPeerConnection(peerConnection);
-              setEvents((prevEvents) => [
-                ...prevEvents,
-                {
-                  type: "answer",
-                  sender: username,
-                  sessionDescription: JSON.stringify(answer),
-                } as AnswerEvent,
-              ]);
+              const answerEvent = {
+                type: "answer",
+                sender: username,
+                sessionDescription: JSON.stringify(answer),
+              } as AnswerEvent;
+              setEvents((prevEvents) => [...prevEvents, answerEvent]);
+
+              ws.send(JSON.stringify(answerEvent));
             }
 
-            createAnswer(username, event, peerConnection);
+            createAnswer(event, peerConnection);
           }
           if (event.type === "answer") {
             console.log(`saving "${event.type}" event =>`);
