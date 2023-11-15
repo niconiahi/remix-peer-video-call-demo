@@ -179,7 +179,7 @@ export default () => {
     }
 
     createAnswer(offerEvent, peerConnection, webSocket);
-  }, [username, host, peerConnection]);
+  }, [username, host, peerConnection, webSocket, offerEvent]);
 
   // guest adds ice candidates
   useEffect(() => {
