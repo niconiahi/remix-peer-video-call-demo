@@ -96,9 +96,8 @@ export function loader({ request, context }: LoaderArgs) {
 export default () => {
   const { host, username, environment } = useLoaderData<typeof loader>();
   const [events, setEvents] = useState<Event[]>([]);
+  const [webSocket, setWebSocket] = useState<WebSocket | undefined>(undefined);
   const eventsRef = useRef<Event[]>([]);
-  console.log("events =>", events);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [peerConnection, setPeerConnection] = useState<
     RTCPeerConnection | undefined
   >(undefined);
@@ -125,7 +124,7 @@ export default () => {
     eventsRef.current = events;
   }, [events]);
 
-  // initial "peer connection" setup for both user and host
+  // host and guest create peer connection
   useEffect(() => {
     if (!username || !host) return;
 
@@ -137,9 +136,62 @@ export default () => {
     setupPeerConnection(username);
   }, [username, host]);
 
-  // host setup
+  // guest creates answer
   useEffect(() => {
-    if (!username || !host || !peerConnection || host !== username) return;
+    if (
+      !username ||
+      !host ||
+      !peerConnection ||
+      !offerEvent ||
+      !webSocket ||
+      host === username ||
+      peerConnection.iceGatheringState === "complete" ||
+      offerEvent.sender === host
+    )
+      return;
+
+    async function createAnswer(
+      offer: OfferEvent,
+      peerConnection: RTCPeerConnection,
+      webSocket: WebSocket,
+    ) {
+      // 6. gets the offer value from the received event
+      const { sessionDescription } = offer;
+
+      // 7. sets remote description using the offer
+      peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
+
+      // 8. creates the answer using the offer
+      const answer = await peerConnection.createAnswer();
+
+      // 9. sets local description using the answer
+      peerConnection.setLocalDescription(answer);
+
+      // 11. sends the answer as the "answer" event
+      const answerEvent = {
+        type: "answer",
+        sender: username,
+        sessionDescription: JSON.stringify(answer),
+      } as AnswerEvent;
+      setEvents((prevEvents) => [...prevEvents, answerEvent]);
+
+      console.log(`sending "${offer.type}" event =>`);
+      webSocket.send(JSON.stringify(answerEvent));
+    }
+
+    createAnswer(offerEvent, peerConnection, webSocket);
+  }, [username, host, peerConnection]);
+
+  // host creates offer
+  useEffect(() => {
+    if (
+      !username ||
+      !host ||
+      !peerConnection ||
+      host !== username ||
+      peerConnection.iceGatheringState === "complete"
+    )
+      return;
 
     async function createOffer(peerConnection: RTCPeerConnection) {
       // 6. creates offer `.createOffer()`
@@ -171,12 +223,13 @@ export default () => {
       host: string,
       peerConnection: RTCPeerConnection,
     ) {
-      const ws = new WebSocket(
+      const webSocket = new WebSocket(
         toWebsocket(
           `${getOrigin({ ENVIRONMENT: environment })}/broadcaster?host=${host}`,
         ),
       );
-      ws.addEventListener("open", () => {
+      setWebSocket(webSocket);
+      webSocket.addEventListener("open", () => {
         console.log("connection established =>");
         if (username !== host) {
           console.log('sending "guest" event =>');
@@ -184,68 +237,28 @@ export default () => {
             type: "guest",
             sender: username,
           } as GuestEvent);
-          ws.send(JSON.stringify(event));
+          webSocket.send(JSON.stringify(event));
         }
       });
-      ws.addEventListener("message", ({ data }) => {
+      webSocket.addEventListener("message", ({ data }) => {
         const event = eventSchema.parse(JSON.parse(data));
         if (event.sender === username) {
           return;
         }
-        console.log(
-          "this event was recieved from your peer =>",
-          `${event.sender} => ${event.type}`,
-        );
+        console.log(`receiving "${event.type}" event =>`);
         if (event.type === "guest") {
           const events = eventsRef.current;
-          console.log(
-            'all these events are going to be sent to the "guest" =>',
-            events,
-          );
           for (const event of events) {
             console.log(`sending "${event.type}" event =>`);
-            ws.send(JSON.stringify(event));
+            webSocket.send(JSON.stringify(event));
           }
         } else {
           setEvents((events) => [...events, event]);
           if (event.type === "offer") {
-            async function createAnswer(
-              offer: OfferEvent,
-              peerConnection: RTCPeerConnection,
-            ) {
-              // 6. gets the offer value from the received event
-              const { sessionDescription } = offer;
-
-              // 7. sets remote description using the offer
-              peerConnection.setRemoteDescription(
-                JSON.parse(sessionDescription),
-              );
-
-              // 8. creates the answer using the offer
-              const answer = await peerConnection.createAnswer();
-
-              // 9. sets local description using the answer
-              peerConnection.setLocalDescription(answer);
-
-              // 11. sends the answer as the "answer" event
-              const answerEvent = {
-                type: "answer",
-                sender: username,
-                sessionDescription: JSON.stringify(answer),
-              } as AnswerEvent;
-              setEvents((prevEvents) => [...prevEvents, answerEvent]);
-
-              console.log(`sending "${event.type}" event =>`);
-              ws.send(JSON.stringify(answerEvent));
-            }
-
-            createAnswer(event, peerConnection);
           }
           if (event.type === "answer") {
-            console.log(`saving "${event.type}" event =>`);
           }
           if (event.type === "candidate") {
-            console.log(`saving "${event.type}" event =>`);
             // 10. add peer candidates
             const { candidate } = event;
             peerConnection.addIceCandidate(JSON.parse(candidate));
