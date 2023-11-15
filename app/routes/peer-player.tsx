@@ -167,7 +167,7 @@ export default () => {
     }
 
     createOffer(username, peerConnection);
-  }, [username, host]);
+  }, [username, host, peerConnection]);
 
   useEffect(() => {
     if (!username || !host || !peerConnection) return;
@@ -262,7 +262,7 @@ export default () => {
     }
 
     setupWebsocket(username, host, peerConnection);
-  }, [username, host]);
+  }, [username, host, peerConnection]);
 
   if (!username) {
     return (
