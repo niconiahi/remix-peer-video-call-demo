@@ -158,13 +158,13 @@ export default () => {
       const { sessionDescription } = offer;
 
       // 7. sets remote description using the offer
-      peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
+      await peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
 
       // 8. creates the answer using the offer
       const answer = await peerConnection.createAnswer();
 
       // 9. sets local description using the answer
-      peerConnection.setLocalDescription(answer);
+      await peerConnection.setLocalDescription(answer);
 
       // 11. sends the answer as the "answer" event
       const answerEvent = {
@@ -183,7 +183,14 @@ export default () => {
 
   // guest adds ice candidates
   useEffect(() => {
-    if (!username || !host || !peerConnection || host === username) return;
+    if (
+      !username ||
+      !host ||
+      !peerConnection ||
+      host === username ||
+      peerConnection.currentRemoteDescription === null
+    )
+      return;
 
     const _iceCandidatesEvents = events.filter(
       (event) => event.sender === host && event.type === "candidate",
@@ -196,6 +203,7 @@ export default () => {
       peerConnection: RTCPeerConnection,
       events: CandidateEvent[],
     ) {
+      console.log("adding peer candidates =>");
       for (const event of events) {
         // 10. add peer candidates
         const { candidate } = event;
@@ -204,7 +212,7 @@ export default () => {
     }
 
     addIceCandidates(peerConnection, iceCandidatesEvents);
-  }, [username, host, peerConnection]);
+  }, [username, host, peerConnection, events]);
 
   // host creates offer
   useEffect(() => {
@@ -225,7 +233,7 @@ export default () => {
       });
 
       // 7. sets setLocalDescription
-      peerConnection.setLocalDescription(offer);
+      await peerConnection.setLocalDescription(offer);
       setEvents((prevEvents) => [
         ...prevEvents,
         {
