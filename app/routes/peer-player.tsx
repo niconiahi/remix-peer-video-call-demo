@@ -95,6 +95,7 @@ export function loader({ request, context }: LoaderArgs) {
 export default () => {
   const { host, username, environment } = useLoaderData<typeof loader>();
   const [events, setEvents] = useState<Event[]>([]);
+  console.log("events:", events);
   const [webSocket, setWebSocket] = useState<WebSocket | undefined>(undefined);
   const eventsRef = useRef<Event[]>([]);
   const [peerConnection, setPeerConnection] = useState<
@@ -162,6 +163,7 @@ export default () => {
 
       // 8. creates the answer using the offer
       const answer = await peerConnection.createAnswer();
+      console.log("created answer =>", answer);
 
       // 9. sets local description using the answer
       await peerConnection.setLocalDescription(answer);
@@ -174,7 +176,7 @@ export default () => {
       } as AnswerEvent;
       setEvents((prevEvents) => [...prevEvents, answerEvent]);
 
-      console.log(`sending "${offer.type}" event =>`);
+      console.log(`sending "${answerEvent.type}" event =>`);
       webSocket.send(JSON.stringify(answerEvent));
     }
 
@@ -281,10 +283,11 @@ export default () => {
         if (event.type === "guest") {
           const events = eventsRef.current;
           const event = eventsEventSchema.parse({
-            events,
-            sender: username,
             type: "events",
+            sender: username,
+            events,
           } as EventsEvent);
+          console.log(`sending "${event.type}" event =>`);
           webSocket.send(JSON.stringify(event));
         } else if (event.type === "events") {
           const { events: _peerEvents } = event;
