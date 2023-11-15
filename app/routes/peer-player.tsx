@@ -19,13 +19,19 @@ import type {
 } from "~/utils/event";
 import {
   answerEventSchema,
+  candidateEventSchema,
   // candidateEventSchema,
   offerEventSchema,
+  eventSchema as rtcEventSchema,
 } from "~/utils/event";
 import { z } from "zod";
-import type { GuestEvent } from "@/src/durable_objects/broadcaster";
+import type {
+  EventsEvent,
+  GuestEvent,
+} from "@/src/durable_objects/broadcaster";
 import {
   eventSchema,
+  eventsEventSchema,
   guestEventSchema,
 } from "@/src/durable_objects/broadcaster";
 import { getEnv } from "~/utils/env";
@@ -58,14 +64,8 @@ export async function action({ request }: ActionArgs) {
 
   switch (formData.get("_action")) {
     case "username": {
-      console.log(
-        'action ~ formData.get("username"):',
-        formData.get("username"),
-      );
       const result = usernameSchema.safeParse(formData.get("username"));
       if (!result.success) {
-        console.log("erroring");
-
         throw json({ error: result.error.toString(), status: 404 });
       }
       const url = new URL(request.url);
@@ -75,7 +75,6 @@ export async function action({ request }: ActionArgs) {
       if (!host) {
         url.searchParams.set("host", username);
       }
-      console.log("action ~ url.toString():", url.toString());
       return redirect(url.toString());
     }
 
@@ -182,6 +181,31 @@ export default () => {
     createAnswer(offerEvent, peerConnection, webSocket);
   }, [username, host, peerConnection]);
 
+  // guest adds ice candidates
+  useEffect(() => {
+    if (!username || !host || !peerConnection || host === username) return;
+
+    const _iceCandidatesEvents = events.filter(
+      (event) => event.sender === host && event.type === "candidate",
+    );
+    const iceCandidatesEvents = z
+      .array(candidateEventSchema)
+      .parse(_iceCandidatesEvents);
+
+    async function addIceCandidates(
+      peerConnection: RTCPeerConnection,
+      events: CandidateEvent[],
+    ) {
+      for (const event of events) {
+        // 10. add peer candidates
+        const { candidate } = event;
+        peerConnection.addIceCandidate(JSON.parse(candidate));
+      }
+    }
+
+    addIceCandidates(peerConnection, iceCandidatesEvents);
+  }, [username, host, peerConnection]);
+
   // host creates offer
   useEffect(() => {
     if (
@@ -248,21 +272,20 @@ export default () => {
         console.log(`receiving "${event.type}" event =>`);
         if (event.type === "guest") {
           const events = eventsRef.current;
-          for (const event of events) {
-            console.log(`sending "${event.type}" event =>`);
-            webSocket.send(JSON.stringify(event));
-          }
+          const event = eventsEventSchema.parse({
+            events,
+            sender: username,
+            type: "events",
+          } as EventsEvent);
+          webSocket.send(JSON.stringify(event));
+        } else if (event.type === "events") {
+          const { events: _peerEvents } = event;
+          const peerEvents = z
+            .array(rtcEventSchema)
+            .parse(_peerEvents.filter((event) => event.type !== "guest"));
+          setEvents((events) => [...events, ...peerEvents]);
         } else {
           setEvents((events) => [...events, event]);
-          if (event.type === "offer") {
-          }
-          if (event.type === "answer") {
-          }
-          if (event.type === "candidate") {
-            // 10. add peer candidates
-            const { candidate } = event;
-            peerConnection.addIceCandidate(JSON.parse(candidate));
-          }
         }
       });
     }

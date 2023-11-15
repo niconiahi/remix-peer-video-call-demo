@@ -10,11 +10,25 @@ export const guestEventSchema = z.object({
   sender: z.string(),
 });
 export type GuestEvent = z.infer<typeof guestEventSchema>;
+export const eventsEventSchema = z.object({
+  type: z.literal("events"),
+  sender: z.string(),
+  events: z.array(
+    z.discriminatedUnion("type", [
+      offerEventSchema,
+      answerEventSchema,
+      candidateEventSchema,
+      guestEventSchema,
+    ]),
+  ),
+});
+export type EventsEvent = z.infer<typeof eventsEventSchema>;
 export const eventSchema = z.discriminatedUnion("type", [
   offerEventSchema,
   answerEventSchema,
   candidateEventSchema,
   guestEventSchema,
+  eventsEventSchema,
 ]);
 type Event = z.infer<typeof eventSchema>;
 type State = {
