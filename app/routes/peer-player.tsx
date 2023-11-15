@@ -95,7 +95,7 @@ export function loader({ request, context }: LoaderArgs) {
 export default () => {
   const { host, username, environment } = useLoaderData<typeof loader>();
   const [events, setEvents] = useState<Event[]>([]);
-  console.log("events:", events);
+  console.log("events =>", events);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [peerConnection, setPeerConnection] = useState<
     RTCPeerConnection | undefined
@@ -240,7 +240,7 @@ export default () => {
 
     setupPeerConnection(username, host);
     setupWebsocket(username, host);
-  }, [username, host]);
+  }, [username, host, events]);
 
   if (!username) {
     return (
