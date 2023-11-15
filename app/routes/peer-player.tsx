@@ -95,7 +95,6 @@ export function loader({ request, context }: LoaderArgs) {
 export default () => {
   const { host, username, environment } = useLoaderData<typeof loader>();
   const [events, setEvents] = useState<Event[]>([]);
-  console.log("events:", events);
   const [webSocket, setWebSocket] = useState<WebSocket | undefined>(undefined);
   const eventsRef = useRef<Event[]>([]);
   const [peerConnection, setPeerConnection] = useState<
@@ -145,8 +144,7 @@ export default () => {
       !offerEvent ||
       !webSocket ||
       host === username ||
-      peerConnection.iceGatheringState === "complete" ||
-      offerEvent.sender === host
+      peerConnection.iceGatheringState === "complete"
     )
       return;
 
@@ -155,6 +153,7 @@ export default () => {
       peerConnection: RTCPeerConnection,
       webSocket: WebSocket,
     ) {
+      console.log("creating answer");
       // 6. gets the offer value from the received event
       const { sessionDescription } = offer;
 
@@ -163,7 +162,6 @@ export default () => {
 
       // 8. creates the answer using the offer
       const answer = await peerConnection.createAnswer();
-      console.log("created answer =>", answer);
 
       // 9. sets local description using the answer
       await peerConnection.setLocalDescription(answer);
