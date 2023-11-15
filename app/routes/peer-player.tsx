@@ -15,6 +15,7 @@ import type {
   CandidateEvent,
   OfferEvent,
   Event,
+  AnswerEvent,
 } from "~/utils/event";
 import {
   answerEventSchema,
@@ -124,10 +125,58 @@ export default () => {
     eventsRef.current = events;
   }, [events]);
 
+  // initial "peer connection" setup for both user and host
   useEffect(() => {
     if (!username || !host) return;
 
-    async function setupWebsocket(username: string, host: string) {
+    async function setupPeerConnection(username: string) {
+      const peerConnection = await createPeerConnection(username, setEvents);
+      setPeerConnection(peerConnection);
+    }
+
+    setupPeerConnection(username);
+  }, [username, host]);
+
+  // host setup
+  useEffect(() => {
+    if (!username || !host || !peerConnection || host !== username) return;
+
+    async function createOffer(
+      username: string,
+      peerConnection: RTCPeerConnection,
+    ) {
+      // 6. creates offer `.createOffer()`
+      const offer = await peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+      });
+
+      // 7. sets setLocalDescription
+      peerConnection.setLocalDescription(offer);
+
+      // 8. sends the offer as the "offer" event
+      setPeerConnection(peerConnection);
+      setEvents((prevEvents) => [
+        ...prevEvents,
+        {
+          type: "offer",
+          sender: username,
+          sessionDescription: JSON.stringify(offer),
+        } as OfferEvent,
+      ]);
+    }
+
+    createOffer(username, peerConnection);
+  }, [username, host]);
+
+  useEffect(() => {
+    if (!username || !host || !peerConnection) return;
+
+    async function setupWebsocket(
+      username: string,
+      host: string,
+      peerConnection: RTCPeerConnection,
+    ) {
       const ws = new WebSocket(
         toWebsocket(
           `${getOrigin({ ENVIRONMENT: environment })}/broadcaster?host=${host}`,
@@ -164,89 +213,55 @@ export default () => {
             ws.send(JSON.stringify(event));
           }
         } else {
-          console.log(`saving "${event.type}" event =>`);
           setEvents((events) => [...events, event]);
+          if (event.type === "offer") {
+            async function createAnswer(
+              username: string,
+              offer: OfferEvent,
+              peerConnection: RTCPeerConnection,
+            ) {
+              // 6. gets the offer value from the received event
+              const { sessionDescription } = offer;
+
+              // 7. sets remote description using the offer
+              peerConnection.setRemoteDescription(
+                JSON.parse(sessionDescription),
+              );
+
+              // 8. creates the answer using the offer
+              const answer = await peerConnection.createAnswer();
+
+              // 9. sets local description using the answer
+              peerConnection.setLocalDescription(answer);
+
+              // 11. sends the answer as the "answer" event
+              setPeerConnection(peerConnection);
+              setEvents((prevEvents) => [
+                ...prevEvents,
+                {
+                  type: "answer",
+                  sender: username,
+                  sessionDescription: JSON.stringify(answer),
+                } as AnswerEvent,
+              ]);
+            }
+
+            createAnswer(username, event, peerConnection);
+          }
+          if (event.type === "answer") {
+            console.log(`saving "${event.type}" event =>`);
+          }
+          if (event.type === "candidate") {
+            console.log(`saving "${event.type}" event =>`);
+            // 10. add peer candidates
+            const { candidate } = event;
+            peerConnection.addIceCandidate(JSON.parse(candidate));
+          }
         }
       });
     }
 
-    async function setupPeerConnection(username: string, host: string) {
-      // 1. creates peer connection
-      const peerConnection = new RTCPeerConnection(iceServers);
-
-      // 2. sets up media and its video
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { min: 640, ideal: 1920, max: 1920 },
-          height: { min: 480, ideal: 1080, max: 1080 },
-        },
-        audio: false,
-      });
-
-      const localVideo = document.querySelector("#local-video");
-
-      if (localVideo) {
-        (localVideo as HTMLVideoElement).srcObject = mediaStream;
-      }
-
-      // 3. adds its media tracks to the peer connection
-      mediaStream
-        .getTracks()
-        .forEach((track) => peerConnection.addTrack(track, mediaStream));
-
-      // 4. saves the candidates
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          setEvents((prevEvents) => [
-            ...prevEvents,
-            {
-              candidate: JSON.stringify(event.candidate),
-              sender: username,
-              type: "candidate",
-            } as CandidateEvent,
-          ]);
-        } else {
-          console.log("all local candidates have been added =>");
-        }
-      };
-
-      // 5. expects receiving tracks from the peer
-      peerConnection.ontrack = (event) => {
-        const remoteVideo = document.querySelector("#remote-video");
-        if (!remoteVideo) return;
-        const video = remoteVideo as HTMLVideoElement;
-        const mediaStream = event.streams[0];
-        if (video.srcObject !== mediaStream) {
-          video.srcObject = mediaStream;
-        }
-      };
-
-      // only one user creates the "offer". That's the "host"
-      if (host !== username) return;
-
-      // 6. creates offer `.createOffer()`
-      const offer = await peerConnection.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
-
-      // 7. sets setLocalDescription
-      peerConnection.setLocalDescription(offer);
-
-      // 8. sends the offer as the "offer" event
-      setPeerConnection(peerConnection);
-      setEvents((prevEvents) => [
-        ...prevEvents,
-        {
-          type: "offer",
-          sender: username,
-          sessionDescription: JSON.stringify(offer),
-        } as OfferEvent,
-      ]);
-    }
-
-    setupPeerConnection(username, host);
-    setupWebsocket(username, host);
+    setupWebsocket(username, host, peerConnection);
   }, [username, host]);
 
   if (!username) {
@@ -392,3 +407,60 @@ export default () => {
     </main>
   );
 };
+
+async function createPeerConnection(
+  username: string,
+  setEvents: React.Dispatch<React.SetStateAction<Event[]>>,
+) {
+  // 1. creates peer connection
+  const peerConnection = new RTCPeerConnection(iceServers);
+
+  // 2. sets up media and its video
+  const mediaStream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      width: { min: 640, ideal: 1920, max: 1920 },
+      height: { min: 480, ideal: 1080, max: 1080 },
+    },
+    audio: false,
+  });
+
+  const localVideo = document.querySelector("#local-video");
+
+  if (localVideo) {
+    (localVideo as HTMLVideoElement).srcObject = mediaStream;
+  }
+
+  // 3. adds its media tracks to the peer connection
+  mediaStream
+    .getTracks()
+    .forEach((track) => peerConnection.addTrack(track, mediaStream));
+
+  // 4. saves the candidates
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      setEvents((prevEvents) => [
+        ...prevEvents,
+        {
+          candidate: JSON.stringify(event.candidate),
+          sender: username,
+          type: "candidate",
+        } as CandidateEvent,
+      ]);
+    } else {
+      console.log("all local candidates have been added =>");
+    }
+  };
+
+  // 5. expects receiving tracks from the peer
+  peerConnection.ontrack = (event) => {
+    const remoteVideo = document.querySelector("#remote-video");
+    if (!remoteVideo) return;
+    const video = remoteVideo as HTMLVideoElement;
+    const mediaStream = event.streams[0];
+    if (video.srcObject !== mediaStream) {
+      video.srcObject = mediaStream;
+    }
+  };
+
+  return peerConnection;
+}
