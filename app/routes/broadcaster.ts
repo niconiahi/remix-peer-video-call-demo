@@ -23,7 +23,6 @@ export async function loader({ request, context }: LoaderArgs) {
   const id = env.BROADCASTER.idFromName(host);
   const stub = env.BROADCASTER.get(id);
   const response = await stub.fetch(request);
-  const event = await response.text();
 
-  return new Response(event);
+  return response;
 }
