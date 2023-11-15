@@ -148,10 +148,16 @@ export default () => {
           `${event.sender} => ${event.type}`,
         );
         if (event.type === "guest") {
+          console.log(
+            'all these events are going to be sent to the "guest" =>',
+            events,
+          );
           for (const event of events) {
+            console.log(`sending "${event.type}" event =>`);
             ws.send(JSON.stringify(event));
           }
         } else {
+          console.log(`saving "${event.type}" event =>`);
           setEvents((events) => [...events, event]);
         }
       });
