@@ -214,7 +214,7 @@ export default () => {
       shouldRunSendEventsRef.current = false;
       sendEvents(events, webSocket);
     }
-  }, [username, host, peerConnection, events, webSocket]);
+  }, [username, host, peerConnection?.iceGatheringState, events, webSocket]);
 
   // guest adds ice candidates
   useEffect(() => {
