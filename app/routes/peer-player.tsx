@@ -98,6 +98,7 @@ export default () => {
   const [webSocket, setWebSocket] = useState<WebSocket | undefined>(undefined);
   const eventsRef = useRef<Event[]>([]);
   const shouldRunAnswerEffectRef = useRef(true);
+  const shouldRunSendEventsRef = useRef(true);
   const [peerConnection, setPeerConnection] = useState<
     RTCPeerConnection | undefined
   >(undefined);
@@ -180,17 +181,20 @@ export default () => {
 
   // guest sends all events once ice candidates gathered
   useEffect(() => {
+    console.log("useEffect ~ peerConnection:", peerConnection);
+    console.log("useEffect ~ webSocket:", webSocket);
     if (
       !username ||
       !host ||
       !peerConnection ||
       !webSocket ||
       host === username ||
-      peerConnection.iceGatheringState !== "complete"
+      !shouldRunSendEventsRef.current
     )
       return;
 
     async function sendEvents(events: Event[], webSocket: WebSocket) {
+      console.log(`guest is sending events`);
       const guestEvents = events.filter((event) => event.sender === host);
       const event = eventsEventSchema.parse({
         type: "events",
@@ -200,7 +204,10 @@ export default () => {
       webSocket.send(JSON.stringify(event));
     }
 
-    sendEvents(events, webSocket);
+    if (peerConnection.iceGatheringState === "complete") {
+      shouldRunSendEventsRef.current = false;
+      sendEvents(events, webSocket);
+    }
   }, [username, host, peerConnection, events]);
 
   // guest adds ice candidates
