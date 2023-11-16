@@ -194,16 +194,16 @@ export default () => {
     async function sendEvents(events: Event[], webSocket: WebSocket) {
       console.log(`guest is sending events`);
       const guestEvents = events.filter((event) => event.sender === host);
+      console.log("guestEvents =>", guestEvents);
       const event = eventsEventSchema.parse({
         type: "events",
         sender: username,
         events: guestEvents,
       } as EventsEvent);
+      console.log("events event =>", event);
       webSocket.send(JSON.stringify(event));
     }
 
-    console.log("peerConnection =>", peerConnection);
-    console.log("events =>", events);
     if (peerConnection.iceGatheringState === "complete") {
       shouldRunSendEventsRef.current = false;
       sendEvents(events, webSocket);
