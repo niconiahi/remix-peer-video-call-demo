@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   answerEventSchema,
   candidateEventSchema,
-  gatheredEventSchema,
   offerEventSchema,
 } from "~/utils/event";
 
@@ -20,7 +19,6 @@ export const eventsEventSchema = z.object({
       answerEventSchema,
       candidateEventSchema,
       guestEventSchema,
-      gatheredEventSchema,
     ]),
   ),
 });
@@ -31,7 +29,6 @@ export const eventSchema = z.discriminatedUnion("type", [
   candidateEventSchema,
   guestEventSchema,
   eventsEventSchema,
-  gatheredEventSchema,
 ]);
 type Event = z.infer<typeof eventSchema>;
 type State = {
