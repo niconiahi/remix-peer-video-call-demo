@@ -24,7 +24,6 @@ export type CandidateEvent = z.infer<typeof candidateEventSchema>;
 export const gatheredEventSchema = z.object({
   type: z.literal("gathered"),
   sender: z.string(),
-  candidate: z.string(),
 });
 export type GatheredEvent = z.infer<typeof gatheredEventSchema>;
 
