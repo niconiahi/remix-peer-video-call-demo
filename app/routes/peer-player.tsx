@@ -153,7 +153,6 @@ export default () => {
     async function createAnswer(
       offer: OfferEvent,
       peerConnection: RTCPeerConnection,
-      webSocket: WebSocket,
     ) {
       // 6. gets the offer value from the received event
       const { sessionDescription } = offer;
@@ -166,26 +165,43 @@ export default () => {
       // 9. sets local description using the answer
       await peerConnection.setLocalDescription(answer);
 
-      // 11. sends the answer as the "answer" event
+      // 11. saves the answer as the "answer" event
       const answerEvent = {
         type: "answer",
         sender: username,
         sessionDescription: JSON.stringify(answer),
       } as AnswerEvent;
       setEvents((prevEvents) => [...prevEvents, answerEvent]);
-
-      console.log(`sending "${answerEvent.type}" event =>`);
-      console.log(
-        "peerConnection.iceGatheringState =>",
-        peerConnection.iceGatheringState,
-      );
-      console.log("events", events);
-      webSocket.send(JSON.stringify(answerEvent));
     }
 
     shouldRunAnswerEffectRef.current = false;
-    createAnswer(offerEvent, peerConnection, webSocket);
+    createAnswer(offerEvent, peerConnection);
   }, [offerEvent]);
+
+  // guest sends all events once ice candidates gathered
+  useEffect(() => {
+    if (
+      !username ||
+      !host ||
+      !peerConnection ||
+      !webSocket ||
+      host === username ||
+      peerConnection.iceGatheringState !== "complete"
+    )
+      return;
+
+    async function sendEvents(events: Event[], webSocket: WebSocket) {
+      const guestEvents = events.filter((event) => event.sender === host);
+      const event = eventsEventSchema.parse({
+        type: "events",
+        sender: username,
+        events: guestEvents,
+      } as EventsEvent);
+      webSocket.send(JSON.stringify(event));
+    }
+
+    sendEvents(events, webSocket);
+  }, [username, host, peerConnection, events]);
 
   // guest adds ice candidates
   useEffect(() => {
