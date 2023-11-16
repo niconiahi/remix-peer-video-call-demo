@@ -181,8 +181,6 @@ export default () => {
 
   // guest sends all events once ice candidates gathered
   useEffect(() => {
-    console.log("useEffect ~ peerConnection:", peerConnection);
-    console.log("useEffect ~ webSocket:", webSocket);
     if (
       !username ||
       !host ||
@@ -204,6 +202,8 @@ export default () => {
       webSocket.send(JSON.stringify(event));
     }
 
+    console.log("peerConnection =>", peerConnection);
+    console.log("events =>", events);
     if (peerConnection.iceGatheringState === "complete") {
       shouldRunSendEventsRef.current = false;
       sendEvents(events, webSocket);
