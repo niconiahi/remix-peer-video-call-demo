@@ -97,6 +97,7 @@ export default () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [webSocket, setWebSocket] = useState<WebSocket | undefined>(undefined);
   const eventsRef = useRef<Event[]>([]);
+  const shouldRunAnswerEffectRef = useRef(true);
   const [peerConnection, setPeerConnection] = useState<
     RTCPeerConnection | undefined
   >(undefined);
@@ -144,7 +145,8 @@ export default () => {
       !offerEvent ||
       !webSocket ||
       host === username ||
-      peerConnection.iceGatheringState === "complete"
+      peerConnection.iceGatheringState === "complete" ||
+      !shouldRunAnswerEffectRef.current
     )
       return;
 
