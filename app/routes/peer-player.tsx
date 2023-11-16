@@ -187,7 +187,8 @@ export default () => {
       !peerConnection ||
       !webSocket ||
       host === username ||
-      !shouldRunSendEventsRef.current
+      !shouldRunSendEventsRef.current ||
+      peerConnection.iceGatheringState !== "complete"
     )
       return;
 
