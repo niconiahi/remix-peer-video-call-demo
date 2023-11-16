@@ -204,6 +204,10 @@ export default () => {
       webSocket.send(JSON.stringify(event));
     }
 
+    console.log(
+      'peerConnection.iceGatheringState === "complete" =>',
+      peerConnection.iceGatheringState === "complete",
+    );
     if (peerConnection.iceGatheringState === "complete") {
       shouldRunSendEventsRef.current = false;
       sendEvents(events, webSocket);
