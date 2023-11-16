@@ -155,21 +155,14 @@ export default () => {
       peerConnection: RTCPeerConnection,
       webSocket: WebSocket,
     ) {
-      console.log("creating answer");
       // 6. gets the offer value from the received event
       const { sessionDescription } = offer;
-      console.log("sessionDescription =>", sessionDescription);
 
       // 7. sets remote description using the offer
       await peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
-      console.log(
-        "peerConnection.currentRemoteDescription =>",
-        peerConnection.currentRemoteDescription,
-      );
 
       // 8. creates the answer using the offer
       const answer = await peerConnection.createAnswer();
-
       // 9. sets local description using the answer
       await peerConnection.setLocalDescription(answer);
 
@@ -182,6 +175,11 @@ export default () => {
       setEvents((prevEvents) => [...prevEvents, answerEvent]);
 
       console.log(`sending "${answerEvent.type}" event =>`);
+      console.log(
+        "peerConnection.iceGatheringState =>",
+        peerConnection.iceGatheringState,
+      );
+      console.log("events", events);
       webSocket.send(JSON.stringify(answerEvent));
     }
 
