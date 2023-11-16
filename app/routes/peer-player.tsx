@@ -158,9 +158,14 @@ export default () => {
       console.log("creating answer");
       // 6. gets the offer value from the received event
       const { sessionDescription } = offer;
+      console.log("sessionDescription =>", sessionDescription);
 
       // 7. sets remote description using the offer
       await peerConnection.setRemoteDescription(JSON.parse(sessionDescription));
+      console.log(
+        "peerConnection.currentRemoteDescription =>",
+        peerConnection.currentRemoteDescription,
+      );
 
       // 8. creates the answer using the offer
       const answer = await peerConnection.createAnswer();
