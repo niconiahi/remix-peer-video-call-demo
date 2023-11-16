@@ -16,12 +16,12 @@ import type {
   OfferEvent,
   Event,
   AnswerEvent,
-  GatheringEvent,
+  GatheredEvent,
 } from "~/utils/event";
 import {
   answerEventSchema,
   candidateEventSchema,
-  gatheringEventSchema,
+  gatheredEventSchema,
   // candidateEventSchema,
   offerEventSchema,
   eventSchema as rtcEventSchema,
@@ -122,9 +122,9 @@ export default () => {
     }),
   );
   const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
-  const _gatheringEvents = z.array(gatheringEventSchema).safeParse(
+  const _gatheringEvents = z.array(gatheredEventSchema).safeParse(
     events.filter((event) => {
-      return event.type === "gathering";
+      return event.type === "gathered";
     }),
   );
   const gatheringEvents = _gatheringEvents.success ? _gatheringEvents.data : [];
@@ -198,9 +198,11 @@ export default () => {
     )
       return;
 
+    console.log("useEffect ~ events:", events);
     const guestGatheringEvent = gatheringEvents.find(
       (event) => event.sender === username,
     );
+    console.log("useEffect ~ guestGatheringEvent:", guestGatheringEvent);
 
     if (!guestGatheringEvent) {
       return;
@@ -527,8 +529,8 @@ async function createPeerConnection(
         ...prevEvents,
         {
           sender: username,
-          type: "gathering",
-        } as GatheringEvent,
+          type: "gathered",
+        } as GatheredEvent,
       ]);
     }
   };
