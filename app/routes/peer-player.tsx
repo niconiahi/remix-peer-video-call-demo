@@ -180,6 +180,7 @@ export default () => {
       webSocket.send(JSON.stringify(answerEvent));
     }
 
+    shouldRunAnswerEffectRef.current = false;
     createAnswer(offerEvent, peerConnection, webSocket);
   }, [offerEvent]);
 
