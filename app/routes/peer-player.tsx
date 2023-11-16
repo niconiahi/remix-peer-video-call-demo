@@ -16,10 +16,12 @@ import type {
   OfferEvent,
   Event,
   AnswerEvent,
+  GatheringEvent,
 } from "~/utils/event";
 import {
   answerEventSchema,
   candidateEventSchema,
+  gatheringEventSchema,
   // candidateEventSchema,
   offerEventSchema,
   eventSchema as rtcEventSchema,
@@ -120,6 +122,12 @@ export default () => {
     }),
   );
   const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
+  const _gatheringEvents = z.array(gatheringEventSchema).safeParse(
+    events.filter((event) => {
+      return event.type === "gathering";
+    }),
+  );
+  const gatheringEvents = _gatheringEvents.success ? _gatheringEvents.data : [];
 
   useEffect(() => {
     eventsRef.current = events;
@@ -184,13 +192,19 @@ export default () => {
     if (
       !username ||
       !host ||
-      !peerConnection ||
       !webSocket ||
       host === username ||
-      !shouldRunSendEventsRef.current ||
-      peerConnection.iceGatheringState !== "complete"
+      !shouldRunSendEventsRef.current
     )
       return;
+
+    const guestGatheringEvent = gatheringEvents.find(
+      (event) => event.sender === username,
+    );
+
+    if (!guestGatheringEvent) {
+      return;
+    }
 
     async function sendEvents(events: Event[], webSocket: WebSocket) {
       console.log(`guest is sending events`);
@@ -205,16 +219,9 @@ export default () => {
       webSocket.send(JSON.stringify(event));
     }
 
-    console.log(
-      'peerConnection.iceGatheringState === "complete" =>',
-      peerConnection.iceGatheringState === "complete",
-    );
-    console.log("peerConnection =>", peerConnection);
-    if (peerConnection.iceGatheringState === "complete") {
-      shouldRunSendEventsRef.current = false;
-      sendEvents(events, webSocket);
-    }
-  }, [username, host, peerConnection?.iceGatheringState, events, webSocket]);
+    shouldRunSendEventsRef.current = false;
+    sendEvents(events, webSocket);
+  }, [username, host, events, webSocket, gatheringEvents]);
 
   // guest adds ice candidates
   useEffect(() => {
@@ -285,11 +292,7 @@ export default () => {
   useEffect(() => {
     if (!username || !host || !peerConnection) return;
 
-    async function setupWebsocket(
-      username: string,
-      host: string,
-      peerConnection: RTCPeerConnection,
-    ) {
+    async function setupWebsocket(username: string, host: string) {
       const webSocket = new WebSocket(
         toWebsocket(
           `${getOrigin({ ENVIRONMENT: environment })}/broadcaster?host=${host}`,
@@ -334,7 +337,7 @@ export default () => {
       });
     }
 
-    setupWebsocket(username, host, peerConnection);
+    setupWebsocket(username, host);
   }, [username, host, peerConnection]);
 
   if (!username) {
@@ -520,7 +523,13 @@ async function createPeerConnection(
         } as CandidateEvent,
       ]);
     } else {
-      console.log("all local candidates have been added =>");
+      setEvents((prevEvents) => [
+        ...prevEvents,
+        {
+          sender: username,
+          type: "gathering",
+        } as GatheringEvent,
+      ]);
     }
   };
 

@@ -20,10 +20,17 @@ export const candidateEventSchema = z.object({
   candidate: z.string(),
 });
 export type CandidateEvent = z.infer<typeof candidateEventSchema>;
+export const gatheringEventSchema = z.object({
+  type: z.literal("gathering"),
+  sender: z.string(),
+  candidate: z.string(),
+});
+export type GatheringEvent = z.infer<typeof gatheringEventSchema>;
 
 export const eventSchema = z.discriminatedUnion("type", [
   offerEventSchema,
   answerEventSchema,
   candidateEventSchema,
+  gatheringEventSchema,
 ]);
 export type Event = z.infer<typeof eventSchema>;
