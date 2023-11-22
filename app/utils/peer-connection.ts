@@ -41,18 +41,10 @@ export const peerConnectionMachine = createMachine(
   {
     types: {} as {
       input: {
-        // video: {
-        //   local: string;
-        //   remote: string;
-        // };
         host: string;
         username: string;
       };
       context: {
-        // video: {
-        //   local: string;
-        //   remote: string;
-        // };
         host: string;
         username: string;
         events: Event[];
@@ -80,13 +72,9 @@ export const peerConnectionMachine = createMachine(
     },
     context: ({ input }) => ({
       events: [],
-      connection: null,
+      connection: new RTCPeerConnection(iceServers),
       host: input.host,
       username: input.username,
-      // video: {
-      //   local: input.video.local,
-      //   remote: input.video.remote,
-      // },
     }),
     id: "peer-connection",
     initial: "disconnected",
@@ -273,6 +261,7 @@ export const peerConnectionMachine = createMachine(
   {
     guards: {
       isHost: ({ context }) => {
+        console.log("context:", context);
         return context.username === context.host;
       },
       isGuest: ({ context }) => {
@@ -327,3 +316,11 @@ export const peerConnectionMachine = createMachine(
     },
   },
 );
+
+const iceServers = {
+  iceServers: [
+    {
+      urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"],
+    },
+  ],
+};
