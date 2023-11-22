@@ -12,13 +12,13 @@ import type {
   CandidateEvent,
   OfferEvent,
   Event,
-} from "~/utils/event";
+} from "~/utils/peer-connection";
 import {
   answerEventSchema,
   candidateEventSchema,
   eventSchema,
   offerEventSchema,
-} from "~/utils/event";
+} from "~/utils/peer-connection";
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",

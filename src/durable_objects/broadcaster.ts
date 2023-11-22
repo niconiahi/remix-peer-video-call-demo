@@ -1,39 +1,6 @@
-import { z } from "zod";
-import {
-  answerEventSchema,
-  candidateEventSchema,
-  offerEventSchema,
-  gatheredEventSchema,
-} from "~/utils/event";
+import type { Event } from "~/utils/signaling";
+import { eventSchema } from "~/utils/signaling";
 
-export const guestEventSchema = z.object({
-  type: z.literal("guest"),
-  sender: z.string(),
-});
-export type GuestEvent = z.infer<typeof guestEventSchema>;
-export const eventsEventSchema = z.object({
-  type: z.literal("events"),
-  sender: z.string(),
-  events: z.array(
-    z.discriminatedUnion("type", [
-      offerEventSchema,
-      answerEventSchema,
-      candidateEventSchema,
-      guestEventSchema,
-      gatheredEventSchema,
-    ]),
-  ),
-});
-export type EventsEvent = z.infer<typeof eventsEventSchema>;
-export const eventSchema = z.discriminatedUnion("type", [
-  offerEventSchema,
-  answerEventSchema,
-  candidateEventSchema,
-  guestEventSchema,
-  eventsEventSchema,
-  gatheredEventSchema,
-]);
-type Event = z.infer<typeof eventSchema>;
 type State = {
   connections: WebSocket[];
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { getOrigin, toWebsocket } from "~/utils/origin";
 
 import { json, redirect } from "@remix-run/cloudflare";
@@ -6,27 +6,22 @@ import type {
   HeadersFunction,
   V2_MetaFunction,
   LoaderArgs,
-  ActionArgs,
 } from "@remix-run/cloudflare";
-import { Form, useLoaderData } from "@remix-run/react";
-import clsx from "clsx";
-import type { CandidateEvent, Event, GatheredEvent } from "~/utils/event";
+import { useLoaderData } from "@remix-run/react";
 import {
+  peerConnectionMachine as _peerConnectionMachine,
   answerEventSchema,
   offerEventSchema,
   eventSchema as rtcEventSchema,
-} from "~/utils/event";
+} from "~/utils/peer-connection";
 import { z } from "zod";
-import type {
-  EventsEvent,
-  GuestEvent,
-} from "@/src/durable_objects/broadcaster";
-import {
-  eventSchema,
-  eventsEventSchema,
-  guestEventSchema,
-} from "@/src/durable_objects/broadcaster";
 import { getEnv } from "~/utils/env";
+import { useMachine } from "@xstate/react";
+import {
+  signalingMachine as _signalingMachine,
+  eventSchema as signalingEvent,
+} from "~/utils/signaling";
+import clsx from "clsx";
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
@@ -41,55 +36,37 @@ export const meta: V2_MetaFunction = () => {
   ];
 };
 
-const iceServers = {
-  iceServers: [
-    {
-      urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"],
-    },
-  ],
-};
-
-const usernameSchema = z.string().min(1);
-
-export async function action({ request }: ActionArgs) {
-  const formData = await request.formData();
-
-  switch (formData.get("_action")) {
-    case "username": {
-      const result = usernameSchema.safeParse(formData.get("username"));
-      if (!result.success) {
-        throw json({ error: result.error.toString(), status: 404 });
-      }
-      const url = new URL(request.url);
-      const username = result.data;
-      url.searchParams.set("username", username);
-      const host = url.searchParams.get("host");
-      if (!host) {
-        url.searchParams.set("host", username);
-      }
-      return redirect(url.toString());
-    }
-
-    default: {
-      throw new Error("Unknown action");
-    }
-  }
-}
-
 export function loader({ request, context }: LoaderArgs) {
   const env = getEnv(context);
   const url = new URL(request.url);
   const host = url.searchParams.get("host");
   const username = url.searchParams.get("username");
+
+  if (!host || !username) {
+    throw redirect("/login");
+  }
+
   return json({ host, username, environment: env.ENVIRONMENT });
 }
 
 export default () => {
   const { host, username, environment } = useLoaderData<typeof loader>();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [peerConnection, setPeerConnection] = useState<
-    RTCPeerConnection | undefined
-  >(undefined);
+  const peerConnectionMachine = useMachine(_peerConnectionMachine, {
+    input: {
+      host,
+      username,
+    },
+  });
+  const signalingMachine = useMachine(_signalingMachine, {
+    input: {
+      webSocket: new WebSocket(
+        toWebsocket(
+          `${getOrigin({ ENVIRONMENT: environment })}/broadcaster?host=${host}`,
+        ),
+      ),
+    },
+  });
+  const { events } = peerConnectionMachine[0].context;
   const _answerEvent = answerEventSchema.safeParse(
     events.find((event) => {
       return event.type === "answer";
@@ -104,96 +81,56 @@ export default () => {
   const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
 
   useEffect(() => {
-    if (!username || !host) return;
-
-    async function setupPeerConnection(username: string) {
-      const peerConnection = await createPeerConnection(username, setEvents);
-      setPeerConnection(peerConnection);
+    console.log(
+      'useEffect ~ peerConnectionMachine[0].can({ type: "CREATE_OFFER" }):',
+      peerConnectionMachine[0].can({ type: "CREATE_OFFER" }),
+    );
+    if (peerConnectionMachine[0].can({ type: "CREATE_OFFER" })) {
+      peerConnectionMachine[1]({ type: "CREATE_OFFER" });
     }
-
-    setupPeerConnection(username);
-  }, [username, host]);
+    if (peerConnectionMachine[0].can({ type: "CREATE_ANSWER" })) {
+      peerConnectionMachine[1]({ type: "CREATE_ANSWER" });
+    }
+    if (peerConnectionMachine[0].can({ type: "ADD_ANSWER" })) {
+      peerConnectionMachine[1]({ type: "ADD_ANSWER" });
+    }
+  }, [peerConnectionMachine]);
 
   useEffect(() => {
-    if (!username || !host || !peerConnection) return;
-
+    const { webSocket } = signalingMachine[0].context;
     async function setupWebsocket(username: string, host: string) {
-      const webSocket = new WebSocket(
-        toWebsocket(
-          `${getOrigin({ ENVIRONMENT: environment })}/broadcaster?host=${host}`,
-        ),
-      );
       webSocket.addEventListener("open", () => {
         console.log("connection established =>");
         if (username !== host) {
-          console.log('sending "guest" event =>');
-          const event = guestEventSchema.parse({
-            type: "guest",
-            sender: username,
-          } as GuestEvent);
-          webSocket.send(JSON.stringify(event));
+          console.log('sending "get" event =>');
+          signalingMachine[1]({
+            type: "GET_EVENTS",
+            username,
+          });
         }
       });
       webSocket.addEventListener("message", ({ data }) => {
-        const event = eventSchema.parse(JSON.parse(data));
+        const event = signalingEvent.parse(JSON.parse(data));
         if (event.sender === username) {
           return;
         }
         console.log(`receiving "${event.type}" event =>`);
-        if (event.type === "guest") {
-          const event = eventsEventSchema.parse({
-            type: "events",
-            sender: username,
-            events,
-          } as EventsEvent);
-          console.log(`sending "${event.type}" event =>`);
-          webSocket.send(JSON.stringify(event));
-        } else if (event.type === "events") {
-          const { events: _peerEvents } = event;
-          const peerEvents = z
-            .array(rtcEventSchema)
-            .parse(_peerEvents.filter((event) => event.type !== "guest"));
-          setEvents((events) => [...events, ...peerEvents]);
+        if (event.type === "get") {
+          signalingMachine[1]({
+            type: "SEND_EVENTS",
+            username,
+            events: peerConnectionMachine[0].context.events,
+          });
         } else {
-          setEvents((events) => [...events, event]);
+          const { events: _peerEvents } = event;
+          const peerEvents = z.array(rtcEventSchema).parse(_peerEvents);
+          peerConnectionMachine[1]({ type: "SET_EVENTS", events: peerEvents });
         }
       });
     }
 
     setupWebsocket(username, host);
-  }, [username, host, peerConnection]);
-
-  if (!username) {
-    return (
-      <main className="max-w-3xl mx-auto space-y-2 flex items-center justify-center h-screen">
-        <Form
-          className="bg-red-200 border-2 border-red-900 space-y-1 p-1"
-          method="POST"
-        >
-          <p className="flex flex-col space-y-1">
-            <label htmlFor="caller" className="text-red-900">
-              Username
-            </label>
-            <input
-              required
-              type="text"
-              name="username"
-              id="username"
-              className="border-2 border-red-900"
-            />
-          </p>
-          <button
-            className="p-4 w-full bg-red-200 border-2 border-red-900 text-red-900 hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-red-100 disabled:text-red-300 disabled:border-red-300"
-            type="submit"
-            name="_action"
-            value="username"
-          >
-            Use this username
-          </button>
-        </Form>
-      </main>
-    );
-  }
+  }, [peerConnectionMachine, signalingMachine]);
 
   return (
     <main className="max-w-3xl mx-auto space-y-2 py-2">
@@ -306,66 +243,3 @@ export default () => {
     </main>
   );
 };
-
-async function createPeerConnection(
-  username: string,
-  setEvents: React.Dispatch<React.SetStateAction<Event[]>>,
-) {
-  // 1. creates peer connection
-  const peerConnection = new RTCPeerConnection(iceServers);
-
-  // 2. sets up media and its video
-  const mediaStream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      width: { min: 640, ideal: 1920, max: 1920 },
-      height: { min: 480, ideal: 1080, max: 1080 },
-    },
-    audio: false,
-  });
-
-  const localVideo = document.querySelector("#local-video");
-
-  if (localVideo) {
-    (localVideo as HTMLVideoElement).srcObject = mediaStream;
-  }
-
-  // 3. adds its media tracks to the peer connection
-  mediaStream
-    .getTracks()
-    .forEach((track) => peerConnection.addTrack(track, mediaStream));
-
-  // 4. saves the candidates
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      setEvents((prevEvents) => [
-        ...prevEvents,
-        {
-          candidate: JSON.stringify(event.candidate),
-          sender: username,
-          type: "candidate",
-        } as CandidateEvent,
-      ]);
-    } else {
-      setEvents((prevEvents) => [
-        ...prevEvents,
-        {
-          sender: username,
-          type: "gathered",
-        } as GatheredEvent,
-      ]);
-    }
-  };
-
-  // 5. expects receiving tracks from the peer
-  peerConnection.ontrack = (event) => {
-    const remoteVideo = document.querySelector("#remote-video");
-    if (!remoteVideo) return;
-    const video = remoteVideo as HTMLVideoElement;
-    const mediaStream = event.streams[0];
-    if (video.srcObject !== mediaStream) {
-      video.srcObject = mediaStream;
-    }
-  };
-
-  return peerConnection;
-}
