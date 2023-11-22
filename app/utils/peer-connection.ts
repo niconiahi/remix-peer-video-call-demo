@@ -1,4 +1,4 @@
-import { and, assign, createMachine } from "xstate";
+import { and, assign, createMachine, raise } from "xstate";
 
 import { z } from "zod";
 
@@ -68,6 +68,7 @@ export const peerConnectionMachine = createMachine(
         | { type: "SET_EVENTS"; events: Event[] }
         | { type: "CREATE_ANSWER" }
         | { type: "ADD_ANSWER" }
+        | { type: "ANSWER_ADDED" }
         | { type: "CREATE_OFFER" };
     },
     context: ({ input }) => ({
@@ -85,14 +86,13 @@ export const peerConnectionMachine = createMachine(
     },
     states: {
       disconnected: {
-        initial: "offering",
         on: {
           CREATE_OFFER: {
-            target: "#peer-connection.disconnected.offering",
+            target: "#peer-connection.connecting.offering",
             guard: and(["isHost", "hasConnection"]),
           },
           CREATE_ANSWER: {
-            target: "#peer-connection.disconnected.answering",
+            target: "#peer-connection.connecting.answering",
             guard: and([
               "isGuest",
               "hasConnection",
@@ -101,6 +101,9 @@ export const peerConnectionMachine = createMachine(
             ]),
           },
         },
+      },
+      connecting: {
+        initial: "offering",
         states: {
           offering: {
             initial: "creating",
@@ -146,7 +149,7 @@ export const peerConnectionMachine = createMachine(
               gathered: {
                 on: {
                   ADD_ANSWER: {
-                    target: "#peer-connection.disconnected.peering",
+                    target: "#peer-connection.connecting.peering",
                     guard: and([
                       "isHost",
                       "hasConnection",
@@ -200,20 +203,16 @@ export const peerConnectionMachine = createMachine(
                   },
                 },
               },
-              gathered: {
-                on: {
-                  SET_EVENTS: [
-                    {
-                      target: "#peer-connection.disconnected.peering",
-                      guard: and(["isHost", "hasConnection"]),
-                    },
-                  ],
-                },
-              },
+              gathered: {},
             },
           },
           peering: {
-            target: "#peer-connection.connected",
+            exit: raise({ type: "ANSWER_ADDED" }),
+            on: {
+              ANSWER_ADDED: {
+                target: "#peer-connection.connected",
+              },
+            },
             entry: ({ context }) => {
               const { connection: _connection, events, username } = context;
               const connection = z

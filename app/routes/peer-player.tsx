@@ -86,12 +86,15 @@ export default () => {
       peerConnectionMachine[0].can({ type: "CREATE_OFFER" }),
     );
     if (peerConnectionMachine[0].can({ type: "CREATE_OFFER" })) {
+      console.log("creating offer");
       peerConnectionMachine[1]({ type: "CREATE_OFFER" });
     }
     if (peerConnectionMachine[0].can({ type: "CREATE_ANSWER" })) {
+      console.log("creating answer");
       peerConnectionMachine[1]({ type: "CREATE_ANSWER" });
     }
     if (peerConnectionMachine[0].can({ type: "ADD_ANSWER" })) {
+      console.log("adding answer");
       peerConnectionMachine[1]({ type: "ADD_ANSWER" });
     }
   }, [peerConnectionMachine]);
