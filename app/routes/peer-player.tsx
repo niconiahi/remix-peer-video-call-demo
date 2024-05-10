@@ -22,6 +22,7 @@ import {
   eventSchema as signalingEvent,
 } from "~/utils/signaling";
 import clsx from "clsx";
+import { ClientOnly } from "remix-utils/client-only";
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
@@ -52,13 +53,23 @@ export function loader({ request, context }: LoaderFunctionArgs) {
 }
 
 export default () => {
+  return (
+    <ClientOnly>
+      {() => <Player />}
+    </ClientOnly>
+  )
+};
+
+function Player() {
   const { host, username, environment } = useLoaderData<typeof loader>();
+  console.log('before connection')
   const peerConnectionMachine = useMachine(_peerConnectionMachine, {
     input: {
       host,
       username,
     },
   });
+  console.log('peerConnectionMachine', peerConnectionMachine)
   const signalingMachine = useMachine(_signalingMachine, {
     input: {
       webSocket: new WebSocket(
@@ -68,6 +79,7 @@ export default () => {
       ),
     },
   });
+  console.log('signalingMachine', signalingMachine)
   const { events } = peerConnectionMachine[0].context;
   const _answerEvent = answerEventSchema.safeParse(
     events.find((event) => {
@@ -83,21 +95,23 @@ export default () => {
   const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
 
   useEffect(() => {
-    console.log(
-      'useEffect ~ peerConnectionMachine[0].can({ type: "CREATE_OFFER" }):',
-      peerConnectionMachine[0].can({ type: "CREATE_OFFER" }),
-    );
-    if (peerConnectionMachine[0].can({ type: "CREATE_OFFER" })) {
+    const [state, send] = peerConnectionMachine
+    console.log('state', state);
+    console.log('state.value', state.value);
+    console.log('state.context', state.context);
+    console.log('state.can', state.can({ type: "CREATE_OFFER" }));
+    if (state.can({ type: "CREATE_OFFER" })) {
+      console.log('creating offer')
       console.log("creating offer");
-      peerConnectionMachine[1]({ type: "CREATE_OFFER" });
+      send({ type: "CREATE_OFFER" });
     }
-    if (peerConnectionMachine[0].can({ type: "CREATE_ANSWER" })) {
+    if (state.can({ type: "CREATE_ANSWER" })) {
       console.log("creating answer");
-      peerConnectionMachine[1]({ type: "CREATE_ANSWER" });
+      send({ type: "CREATE_ANSWER" });
     }
-    if (peerConnectionMachine[0].can({ type: "ADD_ANSWER" })) {
+    if (state.can({ type: "ADD_ANSWER" })) {
       console.log("adding answer");
-      peerConnectionMachine[1]({ type: "ADD_ANSWER" });
+      send({ type: "ADD_ANSWER" });
     }
   }, [peerConnectionMachine]);
 
@@ -247,4 +261,5 @@ export default () => {
       </section>
     </main>
   );
-};
+
+}

@@ -1,7 +1,7 @@
 import type { Env } from "~/utils/env";
 
 export const PRODUCTION_ORIGIN = "https://remix-peer-video-call.pages.dev";
-export const DEVELOPMENT_ORIGIN = "http://localhost:8788";
+export const DEVELOPMENT_ORIGIN = "http://localhost:8787";
 
 export function getOrigin(env: Env) {
   return env.ENVIRONMENT === "development"

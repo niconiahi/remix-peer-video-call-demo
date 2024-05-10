@@ -19,7 +19,7 @@ export class Broadcaster {
 		}
 
 		const [client, server] = Object.values(new WebSocketPair());
-		await this.handleConnection(server);
+		this.handleConnection(server);
 
 		return new Response(null, {
 			status: 101,

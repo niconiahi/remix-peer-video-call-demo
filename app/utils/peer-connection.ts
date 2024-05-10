@@ -52,24 +52,24 @@ export const peerConnectionMachine = createMachine(
       };
       guards: {
         type:
-          | "isHost"
-          | "isGuest"
-          | "hasConnection"
-          | "hasOffer"
-          | "hasAnswer"
-          | "hasHostGathered"
-          | "hasGuestGathered";
+        | "isHost"
+        | "isGuest"
+        | "hasConnection"
+        | "hasOffer"
+        | "hasAnswer"
+        | "hasHostGathered"
+        | "hasGuestGathered";
       };
       events:
-        | { type: "SET_OFFER_EVENT"; offerEvent: OfferEvent }
-        | { type: "SET_CANDIDATE_EVENT"; candidateEvent: CandidateEvent }
-        | { type: "SET_GATHERED_EVENT"; gatheredEvent: GatheredEvent }
-        | { type: "SET_ANSWER_EVENT"; answerEvent: AnswerEvent }
-        | { type: "SET_EVENTS"; events: Event[] }
-        | { type: "CREATE_ANSWER" }
-        | { type: "ADD_ANSWER" }
-        | { type: "ANSWER_ADDED" }
-        | { type: "CREATE_OFFER" };
+      | { type: "SET_OFFER_EVENT"; offerEvent: OfferEvent }
+      | { type: "SET_CANDIDATE_EVENT"; candidateEvent: CandidateEvent }
+      | { type: "SET_GATHERED_EVENT"; gatheredEvent: GatheredEvent }
+      | { type: "SET_ANSWER_EVENT"; answerEvent: AnswerEvent }
+      | { type: "SET_EVENTS"; events: Event[] }
+      | { type: "CREATE_ANSWER" }
+      | { type: "ADD_ANSWER" }
+      | { type: "ANSWER_ADDED" }
+      | { type: "CREATE_OFFER" };
     },
     context: ({ input }) => ({
       events: [],
@@ -270,6 +270,7 @@ export const peerConnectionMachine = createMachine(
         const result = z
           .instanceof(RTCPeerConnection)
           .safeParse(context.connection);
+        console.log('hasConnection => result', result)
         return result.success;
       },
       hasAnswer: ({ context }) => {
