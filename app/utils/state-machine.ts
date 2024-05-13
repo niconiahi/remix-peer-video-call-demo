@@ -1,38 +1,38 @@
-import type { ActorRef } from "xstate";
-import { createMachine, fromPromise, sendTo } from "xstate";
+import type { ActorRef } from "xstate"
+import { createMachine, fromPromise, sendTo } from "xstate"
 
 export const peerConnectionMachine = createMachine(
   {
     types: {} as {
       input: {
-        time: string;
-      };
+        time: string
+      }
       guards: {
-        type: "sentimentGood";
-      };
+        type: "sentimentGood"
+      }
       context: {
         // @ts-expect-error missing type
-        someActorRef: ActorRef;
-        time: string;
-      };
+        someActorRef: ActorRef
+        time: string
+      }
       events:
-        | { type: "INCREMENT"; message: string }
+        | { type: "INCREMENT", message: string }
         | { type: "SUBMIT" }
-        | { type: "FEEDBACK" };
-      delays: "short";
+        | { type: "FEEDBACK" }
+      delays: "short"
       actions:
         | {
-            type: "track";
-            params: {
-              response: string;
-            };
+          type: "track"
+          params: {
+            response: string
           }
-        | { type: "increment"; params: { value: number } };
+        }
+        | { type: "increment", params: { value: number } }
     },
     context: ({ input, spawn }) => ({
       someActorRef: spawn(
         fromPromise(() => {
-          return new Promise((resolve) => resolve(12));
+          return new Promise(resolve => resolve(12))
         }),
       ),
       time: input.time,
@@ -51,7 +51,7 @@ export const peerConnectionMachine = createMachine(
             },
             {
               guard: ({ context }) => {
-                return context.time === "some-time";
+                return context.time === "some-time"
               },
               target: "active",
             },
@@ -61,11 +61,11 @@ export const peerConnectionMachine = createMachine(
         exit: [{ type: "increment", params: { value: 10 } }],
         always: {
           guard: ({ event }) => {
-            return event.type === "SUBMIT";
+            return event.type === "SUBMIT"
           },
           actions: [
             ({ event }) => {
-              console.log(event.type);
+              console.log(event.type)
             },
             sendTo(({ context }) => context.someActorRef, {
               type: "someEvent",
@@ -94,8 +94,8 @@ export const peerConnectionMachine = createMachine(
     },
     guards: {
       sentimentGood: ({ event }) => {
-        return event.type === "FEEDBACK";
+        return event.type === "FEEDBACK"
       },
     },
   },
-);
+)

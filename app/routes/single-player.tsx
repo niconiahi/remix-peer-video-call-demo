@@ -1,9 +1,9 @@
-import type { HeadersFunction, MetaFunction } from "@remix-run/cloudflare";
-import { useEffect, useState } from "react";
+import type { HeadersFunction, MetaFunction } from "@remix-run/cloudflare"
+import { useEffect, useState } from "react"
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
-});
+})
 
 export const meta: MetaFunction = () => {
   return [
@@ -11,8 +11,8 @@ export const meta: MetaFunction = () => {
       name: "description",
       content: "A chat app using WebRTC",
     },
-  ];
-};
+  ]
+}
 
 const iceServers = {
   iceServers: [
@@ -20,12 +20,12 @@ const iceServers = {
       urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"],
     },
   ],
-};
+}
 
-type Connection = {
-  mediaStream?: MediaStream;
-  peerConnection?: RTCPeerConnection;
-};
+interface Connection {
+  mediaStream?: MediaStream
+  peerConnection?: RTCPeerConnection
+}
 
 type Step =
   | "media"
@@ -34,36 +34,37 @@ type Step =
   | "setOffer"
   | "createAnswer"
   | "setAnswer"
-  | undefined;
+  | undefined
 
 export default () => {
-  const [offer, setOffer] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [step, setStep] = useState<Step>("media");
+  const [offer, setOffer] = useState("")
+  const [answer, setAnswer] = useState("")
+  const [step, setStep] = useState<Step>("media")
   const [local, setLocal] = useState<Connection>({
     mediaStream: undefined,
     peerConnection: undefined,
-  });
+  })
   const [remote, setRemote] = useState<Connection>({
     mediaStream: undefined,
     peerConnection: undefined,
-  });
+  })
 
   // 1. get audio and video options available for the user
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined")
+      return
 
     // setup browser-dependant initial state
-    setLocal((prevLocal) => ({
+    setLocal(prevLocal => ({
       ...prevLocal,
       peerConnection: new RTCPeerConnection(iceServers),
-    }));
+    }))
 
-    setRemote((prevRemote) => ({
+    setRemote(prevRemote => ({
       ...prevRemote,
       peerConnection: new RTCPeerConnection(iceServers),
-    }));
-  }, []);
+    }))
+  }, [])
 
   return (
     <main className="max-w-3xl mx-auto space-y-2 py-2">
@@ -94,23 +95,22 @@ export default () => {
                   height: { min: 480, ideal: 1080, max: 1080 },
                 },
                 audio: false,
-              });
+              })
             }
 
-            const mediaStream = await getMediaStream();
+            const mediaStream = await getMediaStream()
 
-            setLocal((prevLocal) => ({
+            setLocal(prevLocal => ({
               ...prevLocal,
               mediaStream,
-            }));
+            }))
 
-            const localVideo = document.querySelector("#local-video");
+            const localVideo = document.querySelector("#local-video")
 
-            if (localVideo) {
-              (localVideo as HTMLVideoElement).srcObject = mediaStream;
-            }
+            if (localVideo)
+              (localVideo as HTMLVideoElement).srcObject = mediaStream
 
-            setStep("peerConnection");
+            setStep("peerConnection")
           }}
         >
           Get media
@@ -125,68 +125,67 @@ export default () => {
             const {
               mediaStream: localMediaStream,
               peerConnection: localPeerConnection,
-            } = local;
-            const { peerConnection: remotePeerConnection } = remote;
+            } = local
+            const { peerConnection: remotePeerConnection } = remote
 
             if (!localMediaStream) {
               throw new Error(
-                '"localVideoStream" is required to establish a peer connection',
-              );
+                "\"localVideoStream\" is required to establish a peer connection",
+              )
             }
             if (!remotePeerConnection) {
               throw new Error(
-                '"remotePeerConnection" is required to establish a peer connection',
-              );
+                "\"remotePeerConnection\" is required to establish a peer connection",
+              )
             }
             if (!localPeerConnection) {
               throw new Error(
-                '"localPeerConnection" is required to establish a peer connection',
-              );
+                "\"localPeerConnection\" is required to establish a peer connection",
+              )
             }
 
-            const localAudioTracks = localMediaStream.getAudioTracks();
-            const localVideoTracks = localMediaStream.getVideoTracks();
+            const localAudioTracks = localMediaStream.getAudioTracks()
+            const localVideoTracks = localMediaStream.getVideoTracks()
 
-            if (localVideoTracks.length > 0) {
-              console.log(`using video device => ${localVideoTracks[0].label}`);
-            }
-            if (localAudioTracks.length > 0) {
-              console.log(`using audio device => ${localAudioTracks[0].label}`);
-            }
+            if (localVideoTracks.length > 0)
+              console.log(`using video device => ${localVideoTracks[0].label}`)
 
-            const remoteVideo = document.querySelector("#remote-video");
+            if (localAudioTracks.length > 0)
+              console.log(`using audio device => ${localAudioTracks[0].label}`)
+
+            const remoteVideo = document.querySelector("#remote-video")
 
             localPeerConnection.onicecandidate = (event) => {
               if (event.candidate) {
-                console.log("onClick={ ~ event.candidate:", event.candidate);
-                remotePeerConnection.addIceCandidate(event.candidate);
-              } else {
-                console.log("all local candidates have been added =>");
+                console.log("onClick={ ~ event.candidate:", event.candidate)
+                remotePeerConnection.addIceCandidate(event.candidate)
               }
-            };
+              else {
+                console.log("all local candidates have been added =>")
+              }
+            }
             remotePeerConnection.onicecandidate = (event) => {
-              if (event.candidate) {
-                localPeerConnection.addIceCandidate(event.candidate);
-              } else {
-                console.log("all remote candidates have been added =>");
-              }
-            };
+              if (event.candidate)
+                localPeerConnection.addIceCandidate(event.candidate)
+              else
+                console.log("all remote candidates have been added =>")
+            }
             remotePeerConnection.ontrack = (event) => {
-              if (!remoteVideo) return;
-              const video = remoteVideo as HTMLVideoElement;
-              const mediaStream = event.streams[0];
+              if (!remoteVideo)
+                return
+              const video = remoteVideo as HTMLVideoElement
+              const mediaStream = event.streams[0]
 
-              if (video.srcObject !== mediaStream) {
-                video.srcObject = mediaStream;
-              }
-            };
+              if (video.srcObject !== mediaStream)
+                video.srcObject = mediaStream
+            }
             localMediaStream
               .getTracks()
-              .forEach((track) =>
+              .forEach(track =>
                 localPeerConnection.addTrack(track, localMediaStream),
-              );
+              )
 
-            setStep("createOffer");
+            setStep("createOffer")
           }}
         >
           Create peer connection
@@ -196,21 +195,21 @@ export default () => {
           disabled={step !== "createOffer"}
           // 4. the local user, the one who initiates the conection, creates the offer
           onClick={async () => {
-            const { peerConnection: localPeerConnection } = local;
+            const { peerConnection: localPeerConnection } = local
 
             if (!localPeerConnection) {
               throw new Error(
-                '"localPeerConnection" is required to create an offer',
-              );
+                "\"localPeerConnection\" is required to create an offer",
+              )
             }
 
             const offer = await localPeerConnection.createOffer({
               offerToReceiveAudio: true,
               offerToReceiveVideo: true,
-            });
+            })
 
-            setOffer(JSON.stringify(offer));
-            setStep("setOffer");
+            setOffer(JSON.stringify(offer))
+            setStep("setOffer")
           }}
         >
           Create offer
@@ -222,24 +221,24 @@ export default () => {
           // - the local user sets it as its local description
           // - the remote user sets it as its remote description
           onClick={async () => {
-            const { peerConnection: localPeerConnection } = local;
-            const { peerConnection: remotePeerConnection } = remote;
+            const { peerConnection: localPeerConnection } = local
+            const { peerConnection: remotePeerConnection } = remote
 
             if (!localPeerConnection) {
               throw new Error(
-                '"localPeerConnection" is required to set the offer',
-              );
+                "\"localPeerConnection\" is required to set the offer",
+              )
             }
             if (!remotePeerConnection) {
               throw new Error(
-                '"remotePeerConnection" is required to set the offer',
-              );
+                "\"remotePeerConnection\" is required to set the offer",
+              )
             }
 
-            const description = JSON.parse(offer);
-            await localPeerConnection.setLocalDescription(description);
-            await remotePeerConnection.setRemoteDescription(description);
-            setStep("createAnswer");
+            const description = JSON.parse(offer)
+            await localPeerConnection.setLocalDescription(description)
+            await remotePeerConnection.setRemoteDescription(description)
+            setStep("createAnswer")
           }}
         >
           Set offer
@@ -249,18 +248,18 @@ export default () => {
           className="p-4 w-full bg-green-200 border-2 border-green-900 text-green-900 hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-green-100 disabled:text-green-300 disabled:border-green-300 col-span-4"
           // 6. the remote user, the one who accepts the conection, creates the answer
           onClick={async () => {
-            const { peerConnection: remotePeerConnection } = remote;
+            const { peerConnection: remotePeerConnection } = remote
 
             if (!remotePeerConnection) {
               throw new Error(
-                '"remotePeerConnection" is required to set the offer',
-              );
+                "\"remotePeerConnection\" is required to set the offer",
+              )
             }
 
-            const answer = await remotePeerConnection.createAnswer();
+            const answer = await remotePeerConnection.createAnswer()
 
-            setAnswer(JSON.stringify(answer));
-            setStep("setAnswer");
+            setAnswer(JSON.stringify(answer))
+            setStep("setAnswer")
           }}
         >
           Create answer
@@ -272,24 +271,24 @@ export default () => {
           disabled={step !== "setAnswer"}
           className="p-4 bg-purple-100 w-full border-2 text-purple-900 border-purple-900 hover:bg-purple-400 disabled:cursor-not-allowed disabled:bg-purple-100 disabled:text-purple-300 disabled:border-purple-300 col-span-4"
           onClick={async () => {
-            const { peerConnection: localPeerConnection } = local;
-            const { peerConnection: remotePeerConnection } = remote;
+            const { peerConnection: localPeerConnection } = local
+            const { peerConnection: remotePeerConnection } = remote
 
             if (!localPeerConnection) {
               throw new Error(
-                '"localPeerConnection" is required to set the offer',
-              );
+                "\"localPeerConnection\" is required to set the offer",
+              )
             }
             if (!remotePeerConnection) {
               throw new Error(
-                '"remotePeerConnection" is required to set the offer',
-              );
+                "\"remotePeerConnection\" is required to set the offer",
+              )
             }
 
-            const description = JSON.parse(answer);
-            await localPeerConnection.setRemoteDescription(description);
-            await remotePeerConnection.setLocalDescription(description);
-            setStep(undefined);
+            const description = JSON.parse(answer)
+            await localPeerConnection.setRemoteDescription(description)
+            await remotePeerConnection.setLocalDescription(description)
+            setStep(undefined)
           }}
         >
           Add answer
@@ -328,5 +327,5 @@ export default () => {
         </p>
       </section>
     </main>
-  );
-};
+  )
+}

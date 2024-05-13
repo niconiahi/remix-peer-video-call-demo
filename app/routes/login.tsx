@@ -1,33 +1,33 @@
-import type { ActionArgs } from "@remix-run/cloudflare";
-import { json, redirect } from "@remix-run/cloudflare";
-import { Form } from "@remix-run/react";
-import { z } from "zod";
+import type { ActionArgs } from "@remix-run/cloudflare"
+import { json, redirect } from "@remix-run/cloudflare"
+import { Form } from "@remix-run/react"
+import { z } from "zod"
 
-const usernameSchema = z.string().min(1);
+const usernameSchema = z.string().min(1)
 
 export async function action({ request }: ActionArgs) {
-  const formData = await request.formData();
+  const formData = await request.formData()
 
   switch (formData.get("_action")) {
     case "username": {
-      const result = usernameSchema.safeParse(formData.get("username"));
-      if (!result.success) {
-        throw json({ error: result.error.toString(), status: 404 });
-      }
-      const url = new URL(request.url);
-      url.pathname = "/peer-player";
-      const username = result.data;
-      url.searchParams.set("username", username);
-      const host = url.searchParams.get("host");
-      if (!host) {
-        url.searchParams.set("host", username);
-      }
-      console.log("action ~ url:", url);
-      return redirect(url.toString());
+      const result = usernameSchema.safeParse(formData.get("username"))
+      if (!result.success)
+        throw json({ error: result.error.toString(), status: 404 })
+
+      const url = new URL(request.url)
+      url.pathname = "/peer-player"
+      const username = result.data
+      url.searchParams.set("username", username)
+      const host = url.searchParams.get("host")
+      if (!host)
+        url.searchParams.set("host", username)
+
+      console.log("action ~ url:", url)
+      return redirect(url.toString())
     }
 
     default: {
-      throw new Error("Unknown action");
+      throw new Error("Unknown action")
     }
   }
 }
@@ -61,5 +61,5 @@ export default () => {
         </button>
       </Form>
     </main>
-  );
-};
+  )
+}

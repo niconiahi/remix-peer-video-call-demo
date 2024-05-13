@@ -2,8 +2,8 @@ name = "broadcaster"
 compatibility_date = "2023-06-21"
 
 [durable_objects]
-bindings = [{ name = "BROADCASTER", class_name = "Broadcaster" }]
+bindings = [ { name = "BROADCASTER", class_name = "Broadcaster" } ]
 
 [[migrations]]
 tag = "v1"
-new_classes = ["Broadcaster"]
+new_classes = [ "Broadcaster" ]

@@ -1,13 +1,13 @@
-import { Broadcaster } from "./durable_objects/broadcaster";
+import { Broadcaster } from "./durable_objects/broadcaster"
 
 export interface Env {
-  BROADCASTER: DurableObjectNamespace;
+  BROADCASTER: DurableObjectNamespace
 }
 
 export default {
   async fetch(request: Request, env: Env) {
-    return new Response("success");
+    return new Response("success")
   },
-};
+}
 
-export { Broadcaster };
+export { Broadcaster }

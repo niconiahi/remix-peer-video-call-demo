@@ -1,32 +1,32 @@
-import { useEffect } from "react";
-import { getOrigin, toWebsocket } from "~/utils/origin";
+import { useEffect } from "react"
 
-import { json, redirect } from "@remix-run/cloudflare";
+import { json, redirect } from "@remix-run/cloudflare"
 import type {
   HeadersFunction,
-  MetaFunction,
   LoaderFunctionArgs,
-} from "@remix-run/cloudflare";
-import { useLoaderData } from "@remix-run/react";
+  MetaFunction,
+} from "@remix-run/cloudflare"
+import { useLoaderData } from "@remix-run/react"
+import { z } from "zod"
+import { useMachine } from "@xstate/react"
+import clsx from "clsx"
+import { ClientOnly } from "remix-utils/client-only"
+import {
+  signalingMachine as _signalingMachine,
+  eventSchema as signalingEvent,
+} from "~/utils/signaling"
+import { getEnv } from "~/utils/env"
 import {
   peerConnectionMachine as _peerConnectionMachine,
   answerEventSchema,
   offerEventSchema,
   eventSchema as rtcEventSchema,
-} from "~/utils/peer-connection";
-import { z } from "zod";
-import { getEnv } from "~/utils/env";
-import { useMachine } from "@xstate/react";
-import {
-  signalingMachine as _signalingMachine,
-  eventSchema as signalingEvent,
-} from "~/utils/signaling";
-import clsx from "clsx";
-import { ClientOnly } from "remix-utils/client-only";
+} from "~/utils/peer-connection"
+import { getOrigin, toWebsocket } from "~/utils/origin"
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
-});
+})
 
 export const meta: MetaFunction = () => {
   return [
@@ -34,22 +34,21 @@ export const meta: MetaFunction = () => {
       name: "description",
       content: "A chat app using WebRTC",
     },
-  ];
-};
+  ]
+}
 
 export function loader({ request, context }: LoaderFunctionArgs) {
-  console.log('before')
-  const env = getEnv(context);
-  console.log('after')
-  const url = new URL(request.url);
-  const host = url.searchParams.get("host");
-  const username = url.searchParams.get("username");
+  console.log("before")
+  const env = getEnv(context)
+  console.log("after")
+  const url = new URL(request.url)
+  const host = url.searchParams.get("host")
+  const username = url.searchParams.get("username")
 
-  if (!host || !username) {
-    throw redirect("/login");
-  }
+  if (!host || !username)
+    throw redirect("/login")
 
-  return json({ host, username, environment: env.ENVIRONMENT });
+  return json({ host, username, environment: env.ENVIRONMENT })
 }
 
 export default () => {
@@ -58,18 +57,18 @@ export default () => {
       {() => <Player />}
     </ClientOnly>
   )
-};
+}
 
 function Player() {
-  const { host, username, environment } = useLoaderData<typeof loader>();
-  console.log('before connection')
+  const { host, username, environment } = useLoaderData<typeof loader>()
+  console.log("before connection")
   const peerConnectionMachine = useMachine(_peerConnectionMachine, {
     input: {
       host,
       username,
     },
-  });
-  console.log('peerConnectionMachine', peerConnectionMachine)
+  })
+  console.log("peerConnectionMachine", peerConnectionMachine)
   const signalingMachine = useMachine(_signalingMachine, {
     input: {
       webSocket: new WebSocket(
@@ -78,78 +77,79 @@ function Player() {
         ),
       ),
     },
-  });
-  console.log('signalingMachine', signalingMachine)
-  const { events } = peerConnectionMachine[0].context;
+  })
+  console.log("signalingMachine", signalingMachine)
+  const { events } = peerConnectionMachine[0].context
   const _answerEvent = answerEventSchema.safeParse(
     events.find((event) => {
-      return event.type === "answer";
+      return event.type === "answer"
     }),
-  );
-  const answerEvent = _answerEvent.success ? _answerEvent.data : undefined;
+  )
+  const answerEvent = _answerEvent.success ? _answerEvent.data : undefined
   const _offerEvent = offerEventSchema.safeParse(
     events.find((event) => {
-      return event.type === "offer";
+      return event.type === "offer"
     }),
-  );
-  const offerEvent = _offerEvent.success ? _offerEvent.data : undefined;
+  )
+  const offerEvent = _offerEvent.success ? _offerEvent.data : undefined
 
   useEffect(() => {
     const [state, send] = peerConnectionMachine
-    console.log('state', state);
-    console.log('state.value', state.value);
-    console.log('state.context', state.context);
-    console.log('state.can', state.can({ type: "CREATE_OFFER" }));
+    console.log("state", state)
+    console.log("state.value", state.value)
+    console.log("state.context", state.context)
+    console.log("state.can", state.can({ type: "CREATE_OFFER" }))
     if (state.can({ type: "CREATE_OFFER" })) {
-      console.log('creating offer')
-      console.log("creating offer");
-      send({ type: "CREATE_OFFER" });
+      console.log("creating offer")
+      console.log("creating offer")
+      send({ type: "CREATE_OFFER" })
     }
     if (state.can({ type: "CREATE_ANSWER" })) {
-      console.log("creating answer");
-      send({ type: "CREATE_ANSWER" });
+      console.log("creating answer")
+      send({ type: "CREATE_ANSWER" })
     }
     if (state.can({ type: "ADD_ANSWER" })) {
-      console.log("adding answer");
-      send({ type: "ADD_ANSWER" });
+      console.log("adding answer")
+      send({ type: "ADD_ANSWER" })
     }
-  }, [peerConnectionMachine]);
+  }, [peerConnectionMachine])
 
   useEffect(() => {
-    const { webSocket } = signalingMachine[0].context;
+    const { webSocket } = signalingMachine[0].context
     async function setupWebsocket(username: string, host: string) {
       webSocket.addEventListener("open", () => {
-        console.log("connection established =>");
+        console.log("connection established =>")
         if (username !== host) {
-          console.log('sending "get" event =>');
+          console.log("sending \"get\" event =>")
           signalingMachine[1]({
             type: "GET_EVENTS",
             username,
-          });
+          })
         }
-      });
+      })
       webSocket.addEventListener("message", ({ data }) => {
-        const event = signalingEvent.parse(JSON.parse(data));
-        if (event.sender === username) {
-          return;
-        }
-        console.log(`receiving "${event.type}" event =>`);
+        const event = signalingEvent.parse(JSON.parse(data))
+        if (event.sender === username)
+          return
+
+        console.log(`receiving "${event.type}" event =>`)
         if (event.type === "get") {
           signalingMachine[1]({
             type: "SEND_EVENTS",
             username,
             events: peerConnectionMachine[0].context.events,
-          });
-        } else {
-          const { events: _peerEvents } = event;
-          const peerEvents = z.array(rtcEventSchema).parse(_peerEvents);
-          peerConnectionMachine[1]({ type: "SET_EVENTS", events: peerEvents });
+          })
         }
-      });
+        else {
+          const { events: _peerEvents } = event
+          const peerEvents = z.array(rtcEventSchema).parse(_peerEvents)
+          peerConnectionMachine[1]({ type: "SET_EVENTS", events: peerEvents })
+        }
+      })
     }
 
-    setupWebsocket(username, host);
-  }, [peerConnectionMachine, signalingMachine]);
+    setupWebsocket(username, host)
+  }, [peerConnectionMachine, signalingMachine])
 
   return (
     <main className="max-w-3xl mx-auto space-y-2 py-2">
@@ -204,17 +204,20 @@ function Player() {
           {events.map((event, index) => {
             function getColors(type: Event["type"]) {
               if (type === "offer")
-                return "bg-pink-200 text-pink-900 border-pink-900";
+                return "bg-pink-200 text-pink-900 border-pink-900"
               if (type === "answer")
-                return "bg-orange-200 text-orange-900 border-orange-900";
+                return "bg-orange-200 text-orange-900 border-orange-900"
               if (type === "candidate")
-                return "bg-yellow-200 text-yellow-900 border-yellow-900";
+                return "bg-yellow-200 text-yellow-900 border-yellow-900"
             }
 
             function getHoverColors(type: Event["type"]) {
-              if (type === "offer") return "hover:bg-pink-400";
-              if (type === "answer") return "hover:bg-orange-400";
-              if (type === "candidate") return "hover:bg-yellow-400";
+              if (type === "offer")
+                return "hover:bg-pink-400"
+              if (type === "answer")
+                return "hover:bg-orange-400"
+              if (type === "candidate")
+                return "hover:bg-yellow-400"
             }
 
             return (
@@ -227,7 +230,13 @@ function Player() {
               >
                 <span className="font-bold">{index}</span>
                 <span className="flex-1">
-                  {event.type} {`event =>`} sent by {event.sender}
+                  {event.type}
+                  {" "}
+                  {`event =>`}
+                  {" "}
+                  sent by
+                  {" "}
+                  {event.sender}
                 </span>
                 <button
                   className={clsx(
@@ -236,7 +245,7 @@ function Player() {
                     getColors(event.type),
                   )}
                   onClick={() => {
-                    navigator.clipboard.writeText(JSON.stringify(event));
+                    navigator.clipboard.writeText(JSON.stringify(event))
                   }}
                 >
                   <svg
@@ -255,11 +264,10 @@ function Player() {
                   </svg>
                 </button>
               </li>
-            );
+            )
           })}
         </ol>
       </section>
     </main>
-  );
-
+  )
 }

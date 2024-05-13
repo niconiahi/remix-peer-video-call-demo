@@ -1,75 +1,75 @@
-import { and, assign, createMachine, raise } from "xstate";
+import { and, assign, createMachine, raise } from "xstate"
 
-import { z } from "zod";
+import { z } from "zod"
 
 export const offerEventSchema = z.object({
   type: z.literal("offer"),
   sender: z.string(),
   sessionDescription: z.string(),
-});
-export type OfferEvent = z.infer<typeof offerEventSchema>;
+})
+export type OfferEvent = z.infer<typeof offerEventSchema>
 
 export const answerEventSchema = z.object({
   type: z.literal("answer"),
   sender: z.string(),
   sessionDescription: z.string(),
-});
-export type AnswerEvent = z.infer<typeof answerEventSchema>;
+})
+export type AnswerEvent = z.infer<typeof answerEventSchema>
 
 export const candidateEventSchema = z.object({
   type: z.literal("candidate"),
   sender: z.string(),
   candidate: z.string(),
-});
-export type CandidateEvent = z.infer<typeof candidateEventSchema>;
+})
+export type CandidateEvent = z.infer<typeof candidateEventSchema>
 
 export const gatheredEventSchema = z.object({
   type: z.literal("gathered"),
   sender: z.string(),
-});
-export type GatheredEvent = z.infer<typeof gatheredEventSchema>;
+})
+export type GatheredEvent = z.infer<typeof gatheredEventSchema>
 
 export const eventSchema = z.discriminatedUnion("type", [
   offerEventSchema,
   answerEventSchema,
   candidateEventSchema,
   gatheredEventSchema,
-]);
-export type Event = z.infer<typeof eventSchema>;
+])
+export type Event = z.infer<typeof eventSchema>
 
 export const peerConnectionMachine = createMachine(
   {
     types: {} as {
       input: {
-        host: string;
-        username: string;
-      };
+        host: string
+        username: string
+      }
       context: {
-        host: string;
-        username: string;
-        events: Event[];
-        connection: RTCPeerConnection | null;
-      };
+        host: string
+        username: string
+        events: Event[]
+        connection: RTCPeerConnection | null
+      }
       guards: {
         type:
-        | "isHost"
-        | "isGuest"
-        | "hasConnection"
-        | "hasOffer"
-        | "hasAnswer"
-        | "hasHostGathered"
-        | "hasGuestGathered";
-      };
+          | "isHost"
+          | "isGuest"
+          | "hasConnection"
+          | "hasOffer"
+          | "hasAnswer"
+          | "hasHostGathered"
+          | "hasGuestGathered"
+      }
       events:
-      | { type: "SET_OFFER_EVENT"; offerEvent: OfferEvent }
-      | { type: "SET_CANDIDATE_EVENT"; candidateEvent: CandidateEvent }
-      | { type: "SET_GATHERED_EVENT"; gatheredEvent: GatheredEvent }
-      | { type: "SET_ANSWER_EVENT"; answerEvent: AnswerEvent }
-      | { type: "SET_EVENTS"; events: Event[] }
-      | { type: "CREATE_ANSWER" }
-      | { type: "ADD_ANSWER" }
-      | { type: "ANSWER_ADDED" }
-      | { type: "CREATE_OFFER" };
+        | { type: "SET_OFFER_EVENT", offerEvent: OfferEvent }
+        | { type: "SET_CANDIDATE_EVENT", candidateEvent: CandidateEvent }
+        | { type: "SET_GATHERED_EVENT", gatheredEvent: GatheredEvent }
+        | { type: "SET_ANSWER_EVENT", answerEvent: AnswerEvent }
+        | { type: "SET_EVENTS", events: Event[] }
+        | { type: "CREATE_ANSWER" }
+        | { type: "ADD_ANSWER" }
+        | { type: "ANSWER_ADDED" }
+        | { type: "CREATE_OFFER" }
     },
     context: ({ input }) => ({
       events: [],
@@ -115,7 +115,7 @@ export const peerConnectionMachine = createMachine(
                       assign(({ event, context }) => {
                         return {
                           events: [...context.events, event.offerEvent],
-                        };
+                        }
                       }),
                     ],
                     target: "gathering",
@@ -129,7 +129,7 @@ export const peerConnectionMachine = createMachine(
                       assign(({ event, context }) => {
                         return {
                           events: [...context.events, event.candidateEvent],
-                        };
+                        }
                       }),
                     ],
                     target: "gathering",
@@ -139,7 +139,7 @@ export const peerConnectionMachine = createMachine(
                       assign(({ event, context }) => {
                         return {
                           events: [...context.events, event.gatheredEvent],
-                        };
+                        }
                       }),
                     ],
                     target: "gathered",
@@ -172,7 +172,7 @@ export const peerConnectionMachine = createMachine(
                       assign(({ event, context }) => {
                         return {
                           events: [...context.events, event.answerEvent],
-                        };
+                        }
                       }),
                     ],
                     target: "gathering",
@@ -186,7 +186,7 @@ export const peerConnectionMachine = createMachine(
                       assign(({ event, context }) => {
                         return {
                           events: [...context.events, event.candidateEvent],
-                        };
+                        }
                       }),
                     ],
                     target: "gathering",
@@ -196,7 +196,7 @@ export const peerConnectionMachine = createMachine(
                       assign(({ event, context }) => {
                         return {
                           events: [...context.events, event.gatheredEvent],
-                        };
+                        }
                       }),
                     ],
                     target: "gathered",
@@ -214,40 +214,40 @@ export const peerConnectionMachine = createMachine(
               },
             },
             entry: ({ context }) => {
-              const { connection: _connection, events, username } = context;
+              const { connection: _connection, events, username } = context
               const connection = z
                 .instanceof(RTCPeerConnection)
-                .parse(_connection);
+                .parse(_connection)
               const candidateEvents = z.array(candidateEventSchema).parse(
                 events.filter((event) => {
-                  return event.type === "candidate";
+                  return event.type === "candidate"
                 }),
-              );
+              )
               const answerEvent = answerEventSchema.parse(
                 events.find((event) => {
-                  return event.type === "answer";
+                  return event.type === "answer"
                 }),
-              );
+              )
               const offerEvent = offerEventSchema.parse(
                 events.find((event) => {
-                  return event.type === "offer";
+                  return event.type === "offer"
                 }),
-              );
+              )
 
               connection.setLocalDescription(
                 JSON.parse(offerEvent.sessionDescription),
-              );
+              )
               connection.setRemoteDescription(
                 JSON.parse(answerEvent.sessionDescription),
-              );
+              )
               candidateEvents
                 .filter(({ sender }) => sender !== username)
                 .forEach(({ candidate, sender }) => {
-                  connection.addIceCandidate(JSON.parse(candidate));
+                  connection.addIceCandidate(JSON.parse(candidate))
                   console.log(
                     `${username} added an ice candidate from ${sender} =>`,
-                  );
-                });
+                  )
+                })
             },
           },
         },
@@ -260,62 +260,62 @@ export const peerConnectionMachine = createMachine(
   {
     guards: {
       isHost: ({ context }) => {
-        console.log("context:", context);
-        return context.username === context.host;
+        console.log("context:", context)
+        return context.username === context.host
       },
       isGuest: ({ context }) => {
-        return context.username !== context.host;
+        return context.username !== context.host
       },
       hasConnection: ({ context }) => {
         const result = z
           .instanceof(RTCPeerConnection)
-          .safeParse(context.connection);
-        console.log('hasConnection => result', result)
-        return result.success;
+          .safeParse(context.connection)
+        console.log("hasConnection => result", result)
+        return result.success
       },
       hasAnswer: ({ context }) => {
         const result = answerEventSchema.safeParse(
           context.events.find((event) => {
-            return event.type === "answer";
+            return event.type === "answer"
           }),
-        );
-        return result.success;
+        )
+        return result.success
       },
       hasOffer: ({ context }) => {
         const result = offerEventSchema.safeParse(
           context.events.find((event) => {
-            return event.type === "offer";
+            return event.type === "offer"
           }),
-        );
-        return result.success;
+        )
+        return result.success
       },
       hasHostGathered: ({ context }) => {
         const result = gatheredEventSchema.safeParse(
           context.events
             .filter((event) => {
-              return event.sender === context.host;
+              return event.sender === context.host
             })
             .find((event) => {
-              return event.type === "gathered";
+              return event.type === "gathered"
             }),
-        );
-        return result.success;
+        )
+        return result.success
       },
       hasGuestGathered: ({ context }) => {
         const result = gatheredEventSchema.safeParse(
           context.events
             .filter((event) => {
-              return event.sender !== context.host;
+              return event.sender !== context.host
             })
             .find((event) => {
-              return event.type === "gathered";
+              return event.type === "gathered"
             }),
-        );
-        return result.success;
+        )
+        return result.success
       },
     },
   },
-);
+)
 
 const iceServers = {
   iceServers: [
@@ -323,4 +323,4 @@ const iceServers = {
       urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"],
     },
   ],
-};
+}
