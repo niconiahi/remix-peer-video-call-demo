@@ -14,8 +14,9 @@ export class Broadcaster {
 
   async fetch(request: Request) {
     const upgradeHeader = request.headers.get("Upgrade")
-    if (!upgradeHeader || upgradeHeader !== "websocket")
+    if (!upgradeHeader || upgradeHeader !== "websocket") {
       return new Response("Expected Upgrade: websocket", { status: 426 })
+    }
 
     const [client, server] = Object.values(new WebSocketPair())
     this.handleConnection(server)
@@ -32,16 +33,17 @@ export class Broadcaster {
     // by Cloudflare. That's why omit this case
     // https://developers.cloudflare.com/workers/examples/websockets/
     server.accept()
-    if (this.state.connections)
+    if (this.state.connections) {
       this.state.connections.push(server)
-		 else
+    } else {
       this.state.connections = [server]
+    }
 
     server.addEventListener("message", ({ data }) => {
-      console.log("server data =>", data)
+      // console.log("server data =>", data)
       const result = eventSchema.safeParse(JSON.parse(data))
       if (!result.success) {
-        console.log("error =>", result.error.toString())
+        // console.log("error =>", result.error.toString())
         return
       }
       const event = result.data
@@ -50,8 +52,9 @@ export class Broadcaster {
   }
 
   broadcast(event: Event) {
-    console.log("this event is being broadcasted by the server =>", event)
-    for (const connection of this.state.connections)
+    // console.log("this event is being broadcasted by the server =>", event)
+    for (const connection of this.state.connections) {
       connection.send(JSON.stringify(event))
+    }
   }
 }

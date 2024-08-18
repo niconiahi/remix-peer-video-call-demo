@@ -64,8 +64,9 @@ export const peerConnectionMachine = createMachine(
             return event.type === "SUBMIT"
           },
           actions: [
-            ({ event }) => {
-              console.log(event.type)
+            () => {
+            // ({ event }) => {
+              // console.log(event.type)
             },
             sendTo(({ context }) => context.someActorRef, {
               type: "someEvent",
@@ -86,8 +87,10 @@ export const peerConnectionMachine = createMachine(
   },
   {
     actions: {
-      track: ({ context, event }, params) => {},
-      increment: ({ context, event }, params) => {},
+      track: () => {},
+      increment: () => {},
+      // track: ({ context, event }, params) => {},
+      // increment: ({ context, event }, params) => {},
     },
     delays: {
       short: 1000,

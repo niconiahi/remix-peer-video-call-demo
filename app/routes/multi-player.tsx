@@ -7,6 +7,7 @@ import clsx from "clsx"
 import { useRef, useState } from "react"
 import invariant from "tiny-invariant"
 import { z } from "zod"
+
 import type {
   AnswerEvent,
   CandidateEvent,
@@ -89,8 +90,9 @@ export default () => {
             onClick={async () => {
               const input = usernameRef.current
 
-              if (!input)
+              if (!input) {
                 return
+              }
 
               setUsername(input.value)
             }}
@@ -138,8 +140,9 @@ export default () => {
 
             const localVideo = document.querySelector("#local-video")
 
-            if (localVideo)
+            if (localVideo) {
               (localVideo as HTMLVideoElement).srcObject = mediaStream
+            }
 
             // 3. adds its media tracks to the peer connection
             mediaStream
@@ -158,8 +161,7 @@ export default () => {
                     type: "candidate",
                   } as CandidateEvent,
                 ])
-              }
-              else {
+              } else {
                 console.log("all local candidates have been added =>")
               }
             }
@@ -167,12 +169,14 @@ export default () => {
             // 5. expects receiving tracks from the peer
             peerConnection.ontrack = (event) => {
               const remoteVideo = document.querySelector("#remote-video")
-              if (!remoteVideo)
+              if (!remoteVideo) {
                 return
+              }
               const video = remoteVideo as HTMLVideoElement
               const mediaStream = event.streams[0]
-              if (video.srcObject !== mediaStream)
+              if (video.srcObject !== mediaStream) {
                 video.srcObject = mediaStream
+              }
             }
 
             // 6. creates offer `.createOffer()`
@@ -218,8 +222,9 @@ export default () => {
 
             const localVideo = document.querySelector("#local-video")
 
-            if (localVideo)
+            if (localVideo) {
               (localVideo as HTMLVideoElement).srcObject = mediaStream
+            }
 
             // 3. adds its media tracks to the peer connection
             mediaStream
@@ -238,8 +243,7 @@ export default () => {
                     type: "candidate",
                   } as CandidateEvent,
                 ])
-              }
-              else {
+              } else {
                 console.log("all local candidates have been added =>")
               }
             }
@@ -247,12 +251,14 @@ export default () => {
             // 5. expects receiving tracks from the peer
             peerConnection.ontrack = (event) => {
               const remoteVideo = document.querySelector("#remote-video")
-              if (!remoteVideo)
+              if (!remoteVideo) {
                 return
+              }
               const video = remoteVideo as HTMLVideoElement
               const mediaStream = event.streams[0]
-              if (video.srcObject !== mediaStream)
+              if (video.srcObject !== mediaStream) {
                 video.srcObject = mediaStream
+              }
             }
 
             // 6. gets the offer value from the received event
@@ -386,8 +392,9 @@ export default () => {
           onClick={() => {
             const textarea = eventRef.current
 
-            if (!textarea)
+            if (!textarea) {
               return
+            }
 
             const isArray = Array.isArray(JSON.parse(textarea.value))
             const events = z
@@ -399,8 +406,7 @@ export default () => {
               )
 
             if (!events.success) {
-              alert(events.error.message)
-
+              console.error(events.error.message)
               return
             }
 
@@ -437,21 +443,27 @@ export default () => {
         <ol className="space-y-2">
           {events.map((event, index) => {
             function getColors(type: Event["type"]) {
-              if (type === "offer")
+              if (type === "offer") {
                 return "bg-pink-200 text-pink-900 border-pink-900"
-              if (type === "answer")
+              }
+              if (type === "answer") {
                 return "bg-orange-200 text-orange-900 border-orange-900"
-              if (type === "candidate")
+              }
+              if (type === "candidate") {
                 return "bg-yellow-200 text-yellow-900 border-yellow-900"
+              }
             }
 
             function getHoverColors(type: Event["type"]) {
-              if (type === "offer")
+              if (type === "offer") {
                 return "hover:bg-pink-400"
-              if (type === "answer")
+              }
+              if (type === "answer") {
                 return "hover:bg-orange-400"
-              if (type === "candidate")
+              }
+              if (type === "candidate") {
                 return "hover:bg-yellow-400"
+              }
             }
 
             return (

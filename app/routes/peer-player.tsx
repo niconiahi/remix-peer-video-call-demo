@@ -1,5 +1,3 @@
-import { useEffect } from "react"
-
 import { json, redirect } from "@remix-run/cloudflare"
 import type {
   HeadersFunction,
@@ -7,22 +5,24 @@ import type {
   MetaFunction,
 } from "@remix-run/cloudflare"
 import { useLoaderData } from "@remix-run/react"
-import { z } from "zod"
 import { useMachine } from "@xstate/react"
 import clsx from "clsx"
+import { useEffect } from "react"
 import { ClientOnly } from "remix-utils/client-only"
-import {
-  signalingMachine as _signalingMachine,
-  eventSchema as signalingEvent,
-} from "~/utils/signaling"
+import { z } from "zod"
+
 import { getEnv } from "~/utils/env"
+import { getOrigin, toWebsocket } from "~/utils/origin"
 import {
   peerConnectionMachine as _peerConnectionMachine,
   answerEventSchema,
   offerEventSchema,
   eventSchema as rtcEventSchema,
 } from "~/utils/peer-connection"
-import { getOrigin, toWebsocket } from "~/utils/origin"
+import {
+  signalingMachine as _signalingMachine,
+  eventSchema as signalingEvent,
+} from "~/utils/signaling"
 
 export const headers: HeadersFunction = () => ({
   title: "Peer to peer chat app",
@@ -45,8 +45,9 @@ export function loader({ request, context }: LoaderFunctionArgs) {
   const host = url.searchParams.get("host")
   const username = url.searchParams.get("username")
 
-  if (!host || !username)
+  if (!host || !username) {
     throw redirect("/login")
+  }
 
   return json({ host, username, environment: env.ENVIRONMENT })
 }
@@ -129,8 +130,9 @@ function Player() {
       })
       webSocket.addEventListener("message", ({ data }) => {
         const event = signalingEvent.parse(JSON.parse(data))
-        if (event.sender === username)
+        if (event.sender === username) {
           return
+        }
 
         console.log(`receiving "${event.type}" event =>`)
         if (event.type === "get") {
@@ -139,8 +141,7 @@ function Player() {
             username,
             events: peerConnectionMachine[0].context.events,
           })
-        }
-        else {
+        } else {
           const { events: _peerEvents } = event
           const peerEvents = z.array(rtcEventSchema).parse(_peerEvents)
           peerConnectionMachine[1]({ type: "SET_EVENTS", events: peerEvents })
@@ -203,21 +204,27 @@ function Player() {
         <ol className="space-y-2">
           {events.map((event, index) => {
             function getColors(type: Event["type"]) {
-              if (type === "offer")
+              if (type === "offer") {
                 return "bg-pink-200 text-pink-900 border-pink-900"
-              if (type === "answer")
+              }
+              if (type === "answer") {
                 return "bg-orange-200 text-orange-900 border-orange-900"
-              if (type === "candidate")
+              }
+              if (type === "candidate") {
                 return "bg-yellow-200 text-yellow-900 border-yellow-900"
+              }
             }
 
             function getHoverColors(type: Event["type"]) {
-              if (type === "offer")
+              if (type === "offer") {
                 return "hover:bg-pink-400"
-              if (type === "answer")
+              }
+              if (type === "answer") {
                 return "hover:bg-orange-400"
-              if (type === "candidate")
+              }
+              if (type === "candidate") {
                 return "hover:bg-yellow-400"
+              }
             }
 
             return (

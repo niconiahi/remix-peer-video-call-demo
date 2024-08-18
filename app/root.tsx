@@ -1,3 +1,4 @@
+import type { LinksFunction } from "@remix-run/cloudflare"
 import {
   Links,
   Meta,
@@ -5,7 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react"
-import type { LinksFunction } from "@remix-run/cloudflare"
+
 import a11yStyles from "~/styles/a11y.css?url"
 import globalStyles from "~/styles/global.css?url"
 import tailwindStyles from "~/styles/tailwind.css?url"

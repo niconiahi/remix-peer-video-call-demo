@@ -11,7 +11,7 @@ export default antfu(
     ignores: ["app/generated/db.ts", "adapters/**"],
   },
   {
-    files: ["**/*.ts,.tsx"],
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       "style/brace-style": ["error", "1tbs", { allowSingleLine: false }],
       "ts/consistent-type-imports": [
@@ -59,7 +59,7 @@ export default antfu(
         },
       ],
       "no-fallthrough": "error",
-      "no-console": "warn",
+      "no-console": "off",
     },
   },
 )

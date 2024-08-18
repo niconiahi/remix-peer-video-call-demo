@@ -11,16 +11,18 @@ export async function action({ request }: ActionArgs) {
   switch (formData.get("_action")) {
     case "username": {
       const result = usernameSchema.safeParse(formData.get("username"))
-      if (!result.success)
+      if (!result.success) {
         throw json({ error: result.error.toString(), status: 404 })
+      }
 
       const url = new URL(request.url)
       url.pathname = "/peer-player"
       const username = result.data
       url.searchParams.set("username", username)
       const host = url.searchParams.get("host")
-      if (!host)
+      if (!host) {
         url.searchParams.set("host", username)
+      }
 
       console.log("action ~ url:", url)
       return redirect(url.toString())

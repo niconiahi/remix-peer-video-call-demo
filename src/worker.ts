@@ -5,7 +5,8 @@ export interface Env {
 }
 
 export default {
-  async fetch(request: Request, env: Env) {
+  // async fetch(request: Request, env: Env) {
+  async fetch() {
     return new Response("success")
   },
 }

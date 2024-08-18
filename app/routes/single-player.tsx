@@ -51,8 +51,9 @@ export default () => {
 
   // 1. get audio and video options available for the user
   useEffect(() => {
-    if (typeof window === "undefined")
+    if (typeof window === "undefined") {
       return
+    }
 
     // setup browser-dependant initial state
     setLocal(prevLocal => ({
@@ -107,8 +108,9 @@ export default () => {
 
             const localVideo = document.querySelector("#local-video")
 
-            if (localVideo)
+            if (localVideo) {
               (localVideo as HTMLVideoElement).srcObject = mediaStream
+            }
 
             setStep("peerConnection")
           }}
@@ -147,11 +149,13 @@ export default () => {
             const localAudioTracks = localMediaStream.getAudioTracks()
             const localVideoTracks = localMediaStream.getVideoTracks()
 
-            if (localVideoTracks.length > 0)
+            if (localVideoTracks.length > 0) {
               console.log(`using video device => ${localVideoTracks[0].label}`)
+            }
 
-            if (localAudioTracks.length > 0)
+            if (localAudioTracks.length > 0) {
               console.log(`using audio device => ${localAudioTracks[0].label}`)
+            }
 
             const remoteVideo = document.querySelector("#remote-video")
 
@@ -159,25 +163,27 @@ export default () => {
               if (event.candidate) {
                 console.log("onClick={ ~ event.candidate:", event.candidate)
                 remotePeerConnection.addIceCandidate(event.candidate)
-              }
-              else {
+              } else {
                 console.log("all local candidates have been added =>")
               }
             }
             remotePeerConnection.onicecandidate = (event) => {
-              if (event.candidate)
+              if (event.candidate) {
                 localPeerConnection.addIceCandidate(event.candidate)
-              else
+              } else {
                 console.log("all remote candidates have been added =>")
+              }
             }
             remotePeerConnection.ontrack = (event) => {
-              if (!remoteVideo)
+              if (!remoteVideo) {
                 return
+              }
               const video = remoteVideo as HTMLVideoElement
               const mediaStream = event.streams[0]
 
-              if (video.srcObject !== mediaStream)
+              if (video.srcObject !== mediaStream) {
                 video.srcObject = mediaStream
+              }
             }
             localMediaStream
               .getTracks()

@@ -1,5 +1,4 @@
 import { and, assign, createMachine, raise } from "xstate"
-
 import { z } from "zod"
 
 export const offerEventSchema = z.object({
@@ -36,6 +35,14 @@ export const eventSchema = z.discriminatedUnion("type", [
   gatheredEventSchema,
 ])
 export type Event = z.infer<typeof eventSchema>
+
+const iceServers = {
+  iceServers: [
+    {
+      urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"],
+    },
+  ],
+}
 
 export const peerConnectionMachine = createMachine(
   {
@@ -316,11 +323,3 @@ export const peerConnectionMachine = createMachine(
     },
   },
 )
-
-const iceServers = {
-  iceServers: [
-    {
-      urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"],
-    },
-  ],
-}
